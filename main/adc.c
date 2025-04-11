@@ -1,7 +1,8 @@
+#include "main.h"
 #include "pin_map.h"
 #include "adc.h"
-
-
+#include "modem.h"
+#include "handler.h"
 
 
 //I2C Interface Setup
@@ -182,7 +183,7 @@ uint16_t read_res_inputs(void)
         res_cal = 999;
     }
 
-    ESP_LOGW(TAG, "res v: %d", res_cal ); 
+    //ESP_LOGW(TAG, "res v: %d", res_cal ); 
 
     return resistance;
     
@@ -209,6 +210,8 @@ void ADCTask(void *pvParameter)
         res = read_res_inputs();
         vTaskDelay(pdMS_TO_TICKS(50));
         ESP_LOGI(TAG, "Analog: %d  Current: %d  Resist: %d",an, cur, res); 
+        vTaskDelay(pdMS_TO_TICKS(5000));
+
 
 
     }

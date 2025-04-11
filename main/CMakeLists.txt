@@ -1,2 +1,2 @@
-idf_component_register(SRCS "adc.c" "main.c"
+idf_component_register(SRCS "modem.c" "adc.c" "main.c" "handler.c" "inputs.c"
                     INCLUDE_DIRS ".")

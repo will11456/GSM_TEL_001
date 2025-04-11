@@ -17,6 +17,11 @@
     "idf.flashType": "UART",
     "files.associations": {
         "compare": "c",
-        "cstdint": "c"
+        "cstdint": "c",
+        "pin_map.h": "c",
+        "adc.h": "c",
+        "modem.h": "c",
+        "main.h": "c",
+        "task.h": "c"
     }
 }

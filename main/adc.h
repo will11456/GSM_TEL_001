@@ -26,6 +26,7 @@
 #define ADS1115_CONFIG_DR_128SPS   (0x0080) // 128 samples per second
 
 // Function prototypes
+esp_err_t i2c_master_init(void);
 void ads1115_init(uint8_t address);
 int16_t ads1115_read_single_ended(uint8_t address, uint8_t channel);
 int16_t read_ads1115_channel(uint8_t address, uint8_t channel);

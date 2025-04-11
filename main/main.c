@@ -1,6 +1,9 @@
 #include "main.h"
 #include "pin_map.h"
 #include "adc.h"
+#include "modem.h"
+#include "handler.h"
+#include "inputs.h"
 
 
 
@@ -66,7 +69,11 @@ void GPIOInit(void)
 }
 
 
-
+void EnableModemRail(void)
+{
+    gpio_set_level(RAIL_4V_EN, 1);
+    ESP_LOGW(TAG, "4V Rail Enabled");
+}
 
 
 void app_main(void)
@@ -74,28 +81,30 @@ void app_main(void)
     //Initialize GPIO
     GPIOInit();
 
+    //Enable 4V rail for modem
+    EnableModemRail();
+
+    //init flash and logs
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        ret = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(ret);
+    init_logs();
+
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+
     //Start Tasks
-    xTaskCreate(ADCTask, "read_ads1115_task", 2048*8, NULL, 10, NULL);
-
-    //while (1){
-
-        // //Toggle GPIO pin 1
-        // gpio_set_level(OUTPUT_1,1);
-        // vTaskDelay(1000 / portTICK_PERIOD_MS);
-        // gpio_set_level(OUTPUT_1,0);
-        // vTaskDelay(1000 / portTICK_PERIOD_MS);
-
-        // //Toggle GPIO pin 2
-        // gpio_set_level(OUTPUT_2,1);
-        // vTaskDelay(1000 / portTICK_PERIOD_MS);
-        // gpio_set_level(OUTPUT_2,0);
-        // vTaskDelay(1000 / portTICK_PERIOD_MS);
-
-        //Read inputs
-        // ESP_LOGW(TAG, "Input 1: %d", gpio_get_level(INPUT_1));
-        // ESP_LOGW(TAG, "Input 2: %d", gpio_get_level(INPUT_2));
-        // vTaskDelay(300 / portTICK_PERIOD_MS);
+    //xTaskCreate(ADCTask, "read_ads1115_task", 2048*8, NULL, 10, NULL);
+    xTaskCreate(ModemTask, "modem_task", 2048*8, NULL, 11, NULL);
+    xTaskCreate(SmsHandlerTask, "SmsHandlerTask", 4096, NULL, 5, NULL);
+    xTaskCreate(InputTask, "InputTask", 2048, NULL, 5, NULL);
 
 
-    //}
+    vTaskDelay(10000 / portTICK_PERIOD_MS);
+
+    send_sms("07852709248", "Hi from ESP32 using ESP-IDF!");
+
+
 }

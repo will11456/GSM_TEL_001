@@ -14,8 +14,8 @@
 #define OUTPUT_2 GPIO_NUM_5
 
 //Modem UART
-#define MODEM_RX GPIO_NUM_12
-#define MODEM_TX GPIO_NUM_13
+#define MODEM_TX GPIO_NUM_12
+#define MODEM_RX GPIO_NUM_13
 
 //Modem Control
 #define PWR_KEY GPIO_NUM_18
