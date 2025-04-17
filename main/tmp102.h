@@ -1,12 +1,16 @@
 #ifndef TMP102_H_
 #define TMP102_H_
 
+#include <stdint.h>
+#include "esp_err.h"
+
 #include "esp_err.h"
 #include <stdio.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "driver/i2c.h"
 #include "esp_log.h"
+
 
 #ifdef __cplusplus
 extern "C" {

@@ -24,6 +24,8 @@
         "main.h": "c",
         "task.h": "c",
         "tmp102.h": "c",
-        "gpio.h": "c"
+        "gpio.h": "c",
+        "config_store.h": "c",
+        "queue.h": "c"
     }
 }

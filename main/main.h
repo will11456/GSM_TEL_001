@@ -12,6 +12,8 @@
 #include "freertos/semphr.h"
 #include <esp_log.h>
 #include "esp_system.h"
+#include "esp_err.h"
+#include <stdint.h>
 
 
 // CPU configuration

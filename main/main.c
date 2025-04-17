@@ -6,6 +6,8 @@
 #include "inputs.h"
 #include "tmp102.h"
 #include "output.h"
+#include "config_store.h"
+
 
 
 
@@ -92,15 +94,24 @@ void app_main(void)
     EnableModemRail();
 
     //init flash and logs
-    esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-        ESP_ERROR_CHECK(nvs_flash_erase());
-        ret = nvs_flash_init();
-    }
-    ESP_ERROR_CHECK(ret);
-    init_logs();
+    // esp_err_t ret = nvs_flash_init();
+    // if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+    //     ESP_ERROR_CHECK(nvs_flash_erase());
+    //     ret = nvs_flash_init();
+    // }
+    // ESP_ERROR_CHECK(ret);
+    // init_logs();
 
     vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+    //create mutexs
+    uart_mutex = xSemaphoreCreateMutex();
+
+    //create queues
+    output_queue = xQueueCreate(10, sizeof(output_cmd_t));         //create the output queue
+    rx_message_queue = xQueueCreate(10, sizeof(sms_message_t));    // create SMS queue
+
+
 
     //Start Tasks
     xTaskCreate(OutputTask, "OutputTask", 2048, NULL, 5, NULL);

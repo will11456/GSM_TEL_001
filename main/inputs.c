@@ -7,6 +7,7 @@
 #include "inputs.h"
 #include "tmp102.h"
 #include "output.h"
+#include "config_store.h"
 
 
 

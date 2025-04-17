@@ -25,6 +25,9 @@ typedef struct {
 // This variable is defined in modem.c.
 extern QueueHandle_t rx_message_queue;
 
+// Mutex for UART operations  
+extern SemaphoreHandle_t uart_mutex; 
+
 // Function prototypes for modem operations.
 void sim800c_init(void);
 void sim800_setup_sms(void);

@@ -5,6 +5,8 @@
 #include "handler.h"
 #include "inputs.h"
 #include "tmp102.h"
+#include "config_store.h"
+
 
 
 #define I2C_MASTER_NUM              I2C_NUM_0

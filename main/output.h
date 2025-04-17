@@ -25,6 +25,11 @@ typedef struct {
     uint8_t      level; /**< 0 = off, 1 = on */
 } output_cmd_t;
 
+//output queue
+extern QueueHandle_t output_queue;
+
+
+
 
 /**
  * @brief  Send a request to set one of the outputs.

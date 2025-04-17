@@ -6,10 +6,12 @@
 #include "inputs.h"
 #include "tmp102.h"
 #include "output.h"
+#include "config_store.h"
+
 
 
 static const char *TAG = "OUTPUT";
-static QueueHandle_t output_queue;
+QueueHandle_t output_queue;
 
 // Mapping from output_id_t to actual GPIO pin:
 static const gpio_num_t output_pins[] = {
@@ -19,7 +21,6 @@ static const gpio_num_t output_pins[] = {
 
 void OutputTask(void *pvParameters)
 {   
-    output_queue = xQueueCreate(10, sizeof(output_cmd_t)); //create the output queue
 
     output_cmd_t cmd;
     // Configure all output pins:

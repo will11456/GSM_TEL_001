@@ -6,6 +6,7 @@
 #include "inputs.h"
 #include "tmp102.h"
 #include "output.h"
+#include "config_store.h"
 
 
 
@@ -13,7 +14,7 @@
 static int last_sms_index = -1;
 
 // Global mutex for UART writes.
-static SemaphoreHandle_t uart_mutex = NULL;
+SemaphoreHandle_t uart_mutex = NULL;
 
 // Global queue for incoming SMS messages.
 QueueHandle_t rx_message_queue = NULL;
@@ -161,10 +162,6 @@ void ModemTask(void *param) {
         uart_mutex = xSemaphoreCreateMutex();
     }
 
-    // Create the rx_message_queue if it hasn't been created.
-    if (rx_message_queue == NULL) {
-        rx_message_queue = xQueueCreate(10, sizeof(sms_message_t));
-    }
 
     sim800c_init();
     sim800c_power_on();
