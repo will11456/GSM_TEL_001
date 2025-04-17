@@ -5,6 +5,12 @@
 #include "modem.h"
 #include "handler.h"
 #include "inputs.h"
+#include "tmp102.h"
+#include "output.h"
+
+
+
+
 static const char *TAG = "INPUTS";
 
 void InputTask(void *pvParameter)

@@ -22,6 +22,8 @@
         "adc.h": "c",
         "modem.h": "c",
         "main.h": "c",
-        "task.h": "c"
+        "task.h": "c",
+        "tmp102.h": "c",
+        "gpio.h": "c"
     }
 }

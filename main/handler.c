@@ -4,6 +4,9 @@
 #include "modem.h"
 #include "handler.h"
 #include "inputs.h"
+#include "tmp102.h"
+#include "output.h"
+
 
 #define MAX_NUMBER_LOG    10
 #define PHONE_NUMBER_LEN  16

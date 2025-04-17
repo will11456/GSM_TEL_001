@@ -4,6 +4,9 @@
 #include "modem.h"
 #include "handler.h"
 #include "inputs.h"
+#include "tmp102.h"
+#include "output.h"
+
 
 
 
@@ -81,6 +84,10 @@ void app_main(void)
     //Initialize GPIO
     GPIOInit();
 
+    //initialize I2C
+    i2c_master_init();
+
+
     //Enable 4V rail for modem
     EnableModemRail();
 
@@ -96,15 +103,18 @@ void app_main(void)
     vTaskDelay(1000 / portTICK_PERIOD_MS);
 
     //Start Tasks
-    //xTaskCreate(ADCTask, "read_ads1115_task", 2048*8, NULL, 10, NULL);
+    xTaskCreate(OutputTask, "OutputTask", 2048, NULL, 5, NULL);
+    xTaskCreate(ADCTask, "read_ads1115_task", 2048*8, NULL, 10, NULL);
     xTaskCreate(ModemTask, "modem_task", 2048*8, NULL, 11, NULL);
     xTaskCreate(SmsHandlerTask, "SmsHandlerTask", 4096, NULL, 5, NULL);
     xTaskCreate(InputTask, "InputTask", 2048, NULL, 5, NULL);
+    xTaskCreate(tmp102_task, "tmp102_task", 2048, NULL, 5, NULL);
+
 
 
     vTaskDelay(10000 / portTICK_PERIOD_MS);
 
-    send_sms("07852709248", "Hi from ESP32 using ESP-IDF!");
+    //send_sms("07852709248", "Hi from ESP32 using ESP-IDF!");
 
 
 }

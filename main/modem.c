@@ -1,7 +1,12 @@
-#include "pin_map.h"
 #include "main.h"
-#include "modem.h"
+#include "pin_map.h"
 #include "adc.h"
+#include "modem.h"
+#include "handler.h"
+#include "inputs.h"
+#include "tmp102.h"
+#include "output.h"
+
 
 
 // Global variable to store last received SMS index.

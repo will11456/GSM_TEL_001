@@ -3,6 +3,9 @@
 #include "adc.h"
 #include "modem.h"
 #include "handler.h"
+#include "inputs.h"
+#include "tmp102.h"
+#include "output.h"
 
 
 //I2C Interface Setup
@@ -43,10 +46,6 @@ esp_err_t i2c_master_init(void) {
 
 
 //Functions
-void ads1115_init(uint8_t address) {
-    i2c_master_init();
-}
-
 
 uint16_t convert_counts_to_volts(uint16_t counts)
 {
@@ -180,12 +179,12 @@ uint16_t read_res_inputs(void)
 
     if (res_cal > 320)
     {
-        res_cal = 999;
+        res_cal = 0;
     }
 
     //ESP_LOGW(TAG, "res v: %d", res_cal ); 
 
-    return resistance;
+    return res_cal;
     
 }
 
@@ -195,7 +194,6 @@ uint16_t read_res_inputs(void)
 
 void ADCTask(void *pvParameter) 
 {
-    ads1115_init(ADC1);
     
     uint16_t an;
     uint16_t cur;
@@ -212,7 +210,6 @@ void ADCTask(void *pvParameter)
         ESP_LOGI(TAG, "Analog: %d  Current: %d  Resist: %d",an, cur, res); 
         vTaskDelay(pdMS_TO_TICKS(5000));
 
-
-
+       
     }
 }
