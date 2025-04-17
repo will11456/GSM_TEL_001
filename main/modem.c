@@ -7,8 +7,10 @@
 #include "tmp102.h"
 #include "output.h"
 #include "config_store.h"
+#include "sms_sender.h"
 
-
+//Logging Tag
+static const char* TAG = "MODEM";
 
 // Global variable to store last received SMS index.
 static int last_sms_index = -1;
@@ -69,33 +71,59 @@ void sim800_send_cmd(const char *cmd)
 // === INIT SMS RECEIVING MODE ===
 void sim800_setup_sms()
 {
-    sim800_send_cmd("AT+CMGF=1");         // Set SMS to text mode
+    sim800_send_cmd("ATE0");   // disable local echo of AT commands
     vTaskDelay(pdMS_TO_TICKS(300));
-    sim800_send_cmd("AT+CNMI=2,2,0,0,0");   // Configure SMS notifications (push SMS to UART)
-    vTaskDelay(pdMS_TO_TICKS(300));
+
+    sim800_send_cmd("AT+CMGF=1");           // text mode
+    vTaskDelay(pdMS_TO_TICKS(500));
+
+    // deliver full SMS (header + body) as soon as it arrives
+    sim800_send_cmd("AT+CNMI=2,1,0,0,0");    
+    vTaskDelay(pdMS_TO_TICKS(500));
+
+    ESP_LOGI(TAG, "SMS mode: text + push new SMS to UART");
 }
+
+
 
 // === SEND SMS FUNCTION ===
 void send_sms(const char *number, const char *message)
 {
-    char cmd[64];
+    char buf[256];
 
+    // 1) Ensure text mode
     sim800_send_cmd("AT+CMGF=1");
     vTaskDelay(pdMS_TO_TICKS(300));
 
-    snprintf(cmd, sizeof(cmd), "AT+CMGS=\"%s\"", number);
-    safe_uart_write(cmd, strlen(cmd));
-    safe_uart_write("\r\n", 2);
-    vTaskDelay(pdMS_TO_TICKS(300));
+    // 2) Flush old UART input
+    uart_flush_input(SIM800L_UART_PORT);
 
+    // 3) Send AT+CMGS
+    snprintf(buf, sizeof(buf), "AT+CMGS=\"%s\"\r\n", number);
+    safe_uart_write(buf, strlen(buf));
+
+    // 4) Wait a fixed 500 ms for the modem to be ready
+    vTaskDelay(pdMS_TO_TICKS(500));
+
+    // 5) Send the message body + Ctrl+Z
     safe_uart_write(message, strlen(message));
-    safe_uart_write("\x1A", 1);  // Ctrl+Z to send the SMS
+    safe_uart_write("\x1A", 1);
 
     // Log the sent SMS message.
-    ESP_LOGI("MODEM", "📤 SMS sent to %s: %s", number, message);
+    ESP_LOGI(TAG, "📤 SMS sent to %s: %s", number, message);
 
-    vTaskDelay(pdMS_TO_TICKS(5000)); // Wait for response
+    // 6) Wait long enough for the send to complete (up to 10 s)
+    vTaskDelay(pdMS_TO_TICKS(10000));
+
+    
 }
+
+
+// Flush any received bytes
+static void flush_rx(void) {
+    uart_flush_input(SIM800L_UART_PORT);
+}
+
 
 // === MESSAGE PARSER ===
 // This function processes the SMS content after reading, removes trailing "OK", and
@@ -167,7 +195,11 @@ void ModemTask(void *param) {
     sim800c_power_on();
     vTaskDelay(pdMS_TO_TICKS(5000));
 
+    
+    
     sim800_setup_sms();
+
+    flush_rx();
 
     uint8_t data[SIM800L_UART_BUF_SIZE];
 
@@ -175,7 +207,7 @@ void ModemTask(void *param) {
         int len = uart_read_bytes(SIM800L_UART_PORT, data, SIM800L_UART_BUF_SIZE - 1, pdMS_TO_TICKS(1000));
         if (len > 0) {
             data[len] = '\0';
-
+            //ESP_LOGI("MODEM", "Received data: %s", (char *)data);
             // 1. Handle new SMS notification: +CMTI: "SM",index
             char *cmti = strstr((char *)data, "+CMTI:");
             if (cmti) {

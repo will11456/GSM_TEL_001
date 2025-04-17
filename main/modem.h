@@ -15,11 +15,8 @@
 #define SIM800L_UART_BUF_SIZE  1024            // UART buffer size
 #define SIM800L_BAUD_RATE      9600            // UART baud rate
 
-// SMS message structure used for inter-task communication.
-typedef struct {
-    char sender[32];
-    char message[160];
-} sms_message_t;
+#include "sms_message.h"
+
 
 // Global queue for received SMS messages.
 // This variable is defined in modem.c.

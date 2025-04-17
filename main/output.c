@@ -1,3 +1,6 @@
+#include <stdint.h>
+#include <stddef.h>
+
 #include "main.h"
 #include "pin_map.h"
 #include "adc.h"

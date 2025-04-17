@@ -1,3 +1,7 @@
+#include <stdint.h>
+#include "esp_err.h"
+
+
 #include "main.h"
 #include "pin_map.h"
 #include "adc.h"
@@ -53,11 +57,11 @@ void tmp102_task(void *pvParameters)
     float temp_c;
     for (;;) {
         if (tmp102_read_celsius(&temp_c) == ESP_OK) {
-            ESP_LOGI(TAG, "Temperature: %.2f°C", temp_c);
+            //ESP_LOGI(TAG, "Temperature: %.2f°C", temp_c);
         } else {
             ESP_LOGE(TAG, "Error reading temperature");
         }
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        vTaskDelay(pdMS_TO_TICKS(30000));
     }
 }
 

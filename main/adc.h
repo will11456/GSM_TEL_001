@@ -1,10 +1,7 @@
 #ifndef ADS1115_H
 #define ADS1115_H
 
-#include <stdint.h>
-#include <driver/i2c.h>
-#include <esp_log.h>
-#include "math.h"
+
 
 // I2C address options for ADS1115
 #define ADC1 0x48 // ADDR pin connected to GND
@@ -32,6 +29,7 @@ int16_t ads1115_read_single_ended(uint8_t address, uint8_t channel);
 int16_t read_ads1115_channel(uint8_t address, uint8_t channel);
 uint16_t convert_counts_to_volts(uint16_t counts);
 uint16_t read_analog_inputs(void);
+uint16_t get_battery_voltage(void);
 void ADCTask(void *pvParameter);
 
 #endif // ADS1115_H

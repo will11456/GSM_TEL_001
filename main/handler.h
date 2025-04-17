@@ -9,21 +9,18 @@ extern "C" {
 #include "esp_err.h"
 #include "freertos/queue.h"
 #include "esp_err.h"
+#include "sms_message.h"
 
 
 #define SMS_SENDER_LEN 32
 #define SMS_MESSAGE_LEN 160
 
-typedef struct {
-    char sender[SMS_SENDER_LEN];     // Phone number of sender
-    char message[SMS_MESSAGE_LEN];   // Raw message text
-} sms_message_t;
+
 
 /**
  * @brief The queue used by the modem to push incoming SMS messages.
  *        Must be created by the main application before tasks are started.
  */
-extern QueueHandle_t rx_message_queue;
 
 /**
  * @brief Task that listens for SMS commands and processes them.

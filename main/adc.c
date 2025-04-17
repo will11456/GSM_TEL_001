@@ -1,3 +1,10 @@
+
+#include <stdint.h>
+#include <stddef.h>
+#include <driver/i2c.h>
+#include <esp_log.h>
+#include "math.h"
+
 #include "main.h"
 #include "pin_map.h"
 #include "adc.h"
@@ -25,6 +32,7 @@
 #define COUNT_TO_VOLTS_CAL      6.144      //Calibration constant for counts to volts in ADC
 #define ANALOG_INPUT_MULTIPLIER 2.5        // Conversion factor for ADC input to voltage
 #define RES_INPUT_MULTIPLIER    5.657
+#define BATT_DIVIDER            5.4
 
 //Logging Tag
 static const char* TAG = "ADC";
@@ -190,7 +198,17 @@ uint16_t read_res_inputs(void)
     
 }
 
+uint16_t get_battery_voltage(void)
+{
+    uint16_t batt_v_counts =  ads1115_read_single_ended(ADC1,2);
+    uint16_t batt_v = convert_counts_to_volts(batt_v_counts);
 
+    uint16_t batt_v_cal = batt_v * BATT_DIVIDER; //account for the potential divider
+
+    return batt_v_cal;
+
+
+}
 
 //MAIN ADC TASK 
 
@@ -209,7 +227,7 @@ void ADCTask(void *pvParameter)
         vTaskDelay(pdMS_TO_TICKS(50));
         res = read_res_inputs();
         vTaskDelay(pdMS_TO_TICKS(50));
-        ESP_LOGI(TAG, "Analog: %d  Current: %d  Resist: %d",an, cur, res); 
+        //ESP_LOGI(TAG, "Analog: %d  Current: %d  Resist: %d",an, cur, res); 
         vTaskDelay(pdMS_TO_TICKS(5000));
 
        

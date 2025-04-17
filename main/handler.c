@@ -1,19 +1,42 @@
-#include "handler.h"
-#include "config_store.h"
-#include "modem.h"
-#include "output.h"
-#include "tmp102.h"
-#include "sensor_data.h"
+#include <stdint.h>
 #include <string.h>
 #include <stdio.h>
 #include <ctype.h>
 #include "main.h"
 #include <stdint.h>
 
-QueueHandle_t rx_message_queue = NULL;
+#include <stdint.h>
+#include <stddef.h>
+#include "main.h"
+#include "pin_map.h"
+#include "adc.h"
+#include "modem.h"
+#include "handler.h"
+#include "inputs.h"
+#include "tmp102.h"
+#include "output.h"
+#include "config_store.h"
+#include "sms_sender.h"
+
+
+//Logging Tag
+static const char* TAG = "HANDLER";
 
 static void send_reply(const char *to, const char *msg) {
-    send_sms(to, msg);
+    char unit_id[32];
+    // Try to fetch the stored Unit ID; default to "Unit ID" on error
+    if (config_store_get_unit_id(unit_id, sizeof(unit_id)) != ESP_OK) {
+        strncpy(unit_id, "Unit ID", sizeof(unit_id)-1);
+        unit_id[sizeof(unit_id)-1] = '\0';
+    }
+
+    // Build the full reply: "<UnitID>: <msg>"
+    char buffer[512];
+    snprintf(buffer, sizeof(buffer), "%s %s", unit_id, msg);
+
+    // Send it
+    send_sms_async(to, buffer);
+
 }
 
 static void trim(char *str) {
@@ -26,7 +49,7 @@ static void trim(char *str) {
 
 static void parse_command(const sms_message_t *sms) {
     char *cmd = sms->message;
-    char response[256];
+    char response[512];
     char arg1[32], arg2[32], arg3[32], arg4[32];
 
     if (strncasecmp(cmd, "CMD:", 4) != 0) return;
@@ -80,12 +103,20 @@ static void parse_command(const sms_message_t *sms) {
     }
 
     if (strcasecmp(cmd, "TEMP") == 0) {
-        float c;
-        if (tmp102_read_celsius(&c) == ESP_OK) {
-            snprintf(response, sizeof(response), "Temperature: %.2f C", c);
-        } else {
+        
+        float temp_c;
+        
+        if (tmp102_read_celsius(&temp_c) == ESP_OK) {
+            ESP_LOGI(TAG, "Temperature: %.2f°C", temp_c);
+            snprintf(response, sizeof(response), "Temperature: %.2f C", temp_c);
+
+        } 
+        else {
+            ESP_LOGE(TAG, "Error reading temperature");
             snprintf(response, sizeof(response), "TEMP sensor error");
         }
+
+        // <— use your ID‑prefixing helper so SMS goes out
         send_reply(sms->sender, response);
         return;
     }
@@ -145,6 +176,7 @@ void SmsHandlerTask(void *param) {
     sms_message_t sms;
     while (1) {
         if (xQueueReceive(rx_message_queue, &sms, portMAX_DELAY)) {
+            ESP_LOGW("SMS", "Received SMS from %s: %s", sms.sender, sms.message);
             parse_command(&sms);
         }
     }

@@ -1,13 +1,20 @@
+#include <stdint.h>
+#include <stddef.h>
+
+
+
 #include "main.h"
 #include "pin_map.h"
 #include "adc.h"
 #include "modem.h"
 #include "handler.h"
-#include "inputs.h"
+//#include "inputs.h"
 #include "tmp102.h"
 #include "output.h"
 #include "config_store.h"
-
+#include "nvs_flash.h"
+#include "config_store.h"
+#include "sms_sender.h"
 
 
 
@@ -89,18 +96,18 @@ void app_main(void)
     //initialize I2C
     i2c_master_init();
 
-
     //Enable 4V rail for modem
     EnableModemRail();
 
-    //init flash and logs
-    // esp_err_t ret = nvs_flash_init();
-    // if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-    //     ESP_ERROR_CHECK(nvs_flash_erase());
-    //     ret = nvs_flash_init();
-    // }
-    // ESP_ERROR_CHECK(ret);
-    // init_logs();
+     //Init NVS
+     esp_err_t err = nvs_flash_init();
+     if (err == ESP_ERR_NVS_NO_FREE_PAGES ||
+         err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+         ESP_ERROR_CHECK(nvs_flash_erase());
+         err = nvs_flash_init();
+     }
+     ESP_ERROR_CHECK(err);
+
 
     vTaskDelay(1000 / portTICK_PERIOD_MS);
 
@@ -111,6 +118,8 @@ void app_main(void)
     output_queue = xQueueCreate(10, sizeof(output_cmd_t));         //create the output queue
     rx_message_queue = xQueueCreate(10, sizeof(sms_message_t));    // create SMS queue
 
+    start_sms_sender();
+
 
 
     //Start Tasks
@@ -118,7 +127,7 @@ void app_main(void)
     xTaskCreate(ADCTask, "read_ads1115_task", 2048*8, NULL, 10, NULL);
     xTaskCreate(ModemTask, "modem_task", 2048*8, NULL, 11, NULL);
     xTaskCreate(SmsHandlerTask, "SmsHandlerTask", 4096, NULL, 5, NULL);
-    xTaskCreate(InputTask, "InputTask", 2048, NULL, 5, NULL);
+    //xTaskCreate(InputTask, "InputTask", 2048, NULL, 5, NULL);
     xTaskCreate(tmp102_task, "tmp102_task", 2048, NULL, 5, NULL);
 
 

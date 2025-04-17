@@ -1,9 +1,21 @@
+#include <stdint.h>
 #include "config_store.h"
 #include "nvs_flash.h"
 #include "nvs.h"
 #include <string.h>
 #include <stdio.h>
-#include <stdint.h>
+
+
+#include "main.h"
+#include "pin_map.h"
+#include "adc.h"
+#include "modem.h"
+#include "handler.h"
+#include "inputs.h"
+#include "tmp102.h"
+#include "output.h"
+#include "config_store.h"
+
 
 #define NVS_NAMESPACE "cfg"
 

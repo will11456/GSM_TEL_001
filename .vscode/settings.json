@@ -26,6 +26,10 @@
         "tmp102.h": "c",
         "gpio.h": "c",
         "config_store.h": "c",
-        "queue.h": "c"
+        "queue.h": "c",
+        "esp_err.h": "c",
+        "string.h": "c",
+        "nvs_flash.h": "c",
+        "stdbool.h": "c"
     }
 }
