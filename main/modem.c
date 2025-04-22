@@ -91,31 +91,32 @@ void send_sms(const char *number, const char *message)
 {
     char buf[256];
 
-    // 1) Ensure text mode
+    // 1. Set text mode
     sim800_send_cmd("AT+CMGF=1");
     vTaskDelay(pdMS_TO_TICKS(300));
 
-    // 2) Flush old UART input
+    // 2. Flush UART input (get rid of any previous junk)
     uart_flush_input(SIM800L_UART_PORT);
 
-    // 3) Send AT+CMGS
+    // 3. Send the SMS command
     snprintf(buf, sizeof(buf), "AT+CMGS=\"%s\"\r\n", number);
     safe_uart_write(buf, strlen(buf));
 
-    // 4) Wait a fixed 500 ms for the modem to be ready
-    vTaskDelay(pdMS_TO_TICKS(500));
+    // 4. Wait a safe amount of time for the SIM800 to prepare (NO wait for '>')
+    vTaskDelay(pdMS_TO_TICKS(1000));  // ← longer delay to be extra safe
 
-    // 5) Send the message body + Ctrl+Z
+    // 5. Send the actual message followed by Ctrl+Z
     safe_uart_write(message, strlen(message));
     safe_uart_write("\x1A", 1);
 
-    // Log the sent SMS message.
-    ESP_LOGI(TAG, "📤 SMS sent to %s: %s", number, message);
+    // 6. Log that we're sending (for debug)
+    ESP_LOGI("MODEM", "📤 SMS to %s: %s", number, message);
 
-    // 6) Wait long enough for the send to complete (up to 10 s)
+    // 7. Wait up to 10s for the module to process and send
     vTaskDelay(pdMS_TO_TICKS(10000));
 
-    
+    // 8. Flush UART again to discard trailing OK or +CMGS
+    uart_flush_input(SIM800L_UART_PORT);
 }
 
 

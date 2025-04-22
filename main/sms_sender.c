@@ -12,7 +12,7 @@ void sms_sender_task(void *pv) {
     while (xQueueReceive(sms_queue, &req, portMAX_DELAY)) {
         send_sms(req.number, req.text);
         // small delay between SMS to give the module breathing room
-        vTaskDelay(pdMS_TO_TICKS(500));
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
 

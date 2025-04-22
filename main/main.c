@@ -83,6 +83,8 @@ void GPIOInit(void)
 
 void EnableModemRail(void)
 {
+    gpio_set_level(RAIL_4V_EN, 0);
+    vTaskDelay(500 / portTICK_PERIOD_MS); // Wait for 1 second to stabilize the rail
     gpio_set_level(RAIL_4V_EN, 1);
     ESP_LOGW(TAG, "4V Rail Enabled");
 }

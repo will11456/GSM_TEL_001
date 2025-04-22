@@ -11,9 +11,9 @@
 #include "esp_log.h"
 #include <ctype.h> 
 
-#define SIM800L_UART_PORT      UART_NUM_2      // UART port number for SIM800L
-#define SIM800L_UART_BUF_SIZE  1024            // UART buffer size
-#define SIM800L_BAUD_RATE      9600            // UART baud rate
+#define SIM800L_UART_PORT      UART_NUM_1      // UART port number for SIM800L
+#define SIM800L_UART_BUF_SIZE  2048           // UART buffer size
+#define SIM800L_BAUD_RATE      115200            // UART baud rate
 
 #include "sms_message.h"
 
