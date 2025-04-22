@@ -198,12 +198,14 @@ uint16_t read_res_inputs(void)
     
 }
 
-uint16_t get_battery_voltage(void)
+float get_battery_voltage(void)
 {
     uint16_t batt_v_counts =  ads1115_read_single_ended(ADC1,2);
     uint16_t batt_v = convert_counts_to_volts(batt_v_counts);
 
-    uint16_t batt_v_cal = batt_v * BATT_DIVIDER; //account for the potential divider
+    uint16_t batt_mv_cal = batt_v * BATT_DIVIDER; //account for the potential divider
+
+    float batt_v_cal = ((float)batt_mv_cal) / 1000.0; //convert to volts
 
     return batt_v_cal;
 
