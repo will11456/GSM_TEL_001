@@ -171,9 +171,9 @@ uint16_t read_4_20_inputs(void)
     
     float current = 100 * voltage_4_20_mv_in / SHUNT_420_RESISTANCE;
     uint16_t current_int = current;
+    //ESP_LOGI(TAG, "c1: %d", current_int);
 
     return current_int;
-    //ESP_LOGI(TAG, "c1: %d", current_int);
 
 }
 
@@ -185,7 +185,8 @@ uint16_t read_res_inputs(void)
 
     uint16_t resistance = (8427/ RES_INPUT_MULTIPLIER) * analog_voltage_1 / (23100 - analog_voltage_1); 
 
-    uint16_t res_cal = 0.0093 * pow(resistance,2) +0.6919* resistance +10.026;
+    uint16_t res_cal = resistance * 1.0603 + 3.7445; //callibration for resistive input
+
 
     if (res_cal > 320)
     {
@@ -230,7 +231,7 @@ void ADCTask(void *pvParameter)
         res = read_res_inputs();
         vTaskDelay(pdMS_TO_TICKS(50));
         //ESP_LOGI(TAG, "Analog: %d  Current: %d  Resist: %d",an, cur, res); 
-        vTaskDelay(pdMS_TO_TICKS(5000));
+        vTaskDelay(pdMS_TO_TICKS(1000));
 
        
     }
