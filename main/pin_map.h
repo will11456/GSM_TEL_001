@@ -17,14 +17,17 @@
 #define MODEM_TX GPIO_NUM_12
 #define MODEM_RX GPIO_NUM_13
 
+//GPS UART
+#define GPS_TX GPIO_NUM_8
+#define GPS_RX GPIO_NUM_9
+
+
 //Modem Control
 #define PWR_KEY GPIO_NUM_18
 #define RAIL_4V_EN GPIO_NUM_21
 
 //Test Pads
-#define TEST_PAD_1 GPIO_NUM_8
 #define TEST_PAD_2 GPIO_NUM_36
-#define TEST_PAD_3 GPIO_NUM_9
 #define TEST_PAD_4 GPIO_NUM_37
 
 

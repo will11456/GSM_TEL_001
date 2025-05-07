@@ -4,6 +4,7 @@
 
 
 #include "main.h"
+#include "gps.h"
 #include "pin_map.h"
 #include "adc.h"
 #include "modem.h"
@@ -45,15 +46,11 @@ void GPIOInit(void)
     gpio_reset_pin(PWR_KEY);
     gpio_reset_pin(RAIL_4V_EN);
     
-    gpio_reset_pin(TEST_PAD_1);
     gpio_reset_pin(TEST_PAD_2);
-    gpio_reset_pin(TEST_PAD_3);
     gpio_reset_pin(TEST_PAD_4);
 
     //Set pull-up resistors for input pins
-    gpio_set_pull_mode(TEST_PAD_1, GPIO_PULLDOWN_ENABLE);
     gpio_set_pull_mode(TEST_PAD_2, GPIO_PULLDOWN_ENABLE);
-    gpio_set_pull_mode(TEST_PAD_3, GPIO_PULLDOWN_ENABLE);
     gpio_set_pull_mode(TEST_PAD_4, GPIO_PULLDOWN_ENABLE);
     
 
@@ -68,9 +65,7 @@ void GPIOInit(void)
     gpio_set_direction(RAIL_4V_EN, GPIO_MODE_OUTPUT);
 
 
-    gpio_set_direction(TEST_PAD_1, GPIO_MODE_INPUT);
     gpio_set_direction(TEST_PAD_2, GPIO_MODE_INPUT);
-    gpio_set_direction(TEST_PAD_3, GPIO_MODE_INPUT);
     gpio_set_direction(TEST_PAD_4, GPIO_MODE_INPUT);
     
     gpio_set_level(OUTPUT_1, 0);
@@ -92,6 +87,12 @@ void EnableModemRail(void)
 
 void app_main(void)
 {
+
+    //create mutexs
+    uart_mutex = xSemaphoreCreateMutex();
+    gps_mutex = xSemaphoreCreateMutex();
+
+
     //Initialize GPIO
     GPIOInit();
 
@@ -101,25 +102,26 @@ void app_main(void)
     //Enable 4V rail for modem
     EnableModemRail();
 
-     //Init NVS
-     esp_err_t err = nvs_flash_init();
-     if (err == ESP_ERR_NVS_NO_FREE_PAGES ||
-         err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-         ESP_ERROR_CHECK(nvs_flash_erase());
-         err = nvs_flash_init();
-     }
-     ESP_ERROR_CHECK(err);
-
+    //Init NVS
+    esp_err_t err = nvs_flash_init();
+    if (err == ESP_ERR_NVS_NO_FREE_PAGES ||
+        err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        err = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(err);
 
     vTaskDelay(1000 / portTICK_PERIOD_MS);
 
-    //create mutexs
-    uart_mutex = xSemaphoreCreateMutex();
+    //init GPS
+    gps_init();
+
 
     //create queues
     output_queue = xQueueCreate(10, sizeof(output_cmd_t));         //create the output queue
     rx_message_queue = xQueueCreate(10, sizeof(sms_message_t));    // create SMS queue
 
+    //start sms sender task
     start_sms_sender();
 
 
@@ -131,6 +133,8 @@ void app_main(void)
     xTaskCreate(SmsHandlerTask, "SmsHandlerTask", 4096, NULL, 5, NULL);
     //xTaskCreate(InputTask, "InputTask", 2048, NULL, 5, NULL);
     xTaskCreate(tmp102_task, "tmp102_task", 2048, NULL, 5, NULL);
+    xTaskCreate(gps_task, "gps_task", 4096, NULL, 5, NULL);
+
 
 
 
