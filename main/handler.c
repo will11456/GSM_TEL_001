@@ -16,13 +16,16 @@
 #include "tmp102.h"
 #include "output.h"
 #include "config_store.h"
-#include "sms_sender.h"
 
 
 //Logging Tag
 static const char* TAG = "HANDLER";
 
-static void send_reply(const char *to, const char *msg) {
+extern QueueHandle_t rx_message_queue;
+
+void send_reply(const char *to_number, const char *message)
+{
+
     char unit_id[32];
     // Try to fetch the stored Unit ID; default to "Unit ID" on error
     if (config_store_get_unit_id(unit_id, sizeof(unit_id)) != ESP_OK) {
@@ -32,11 +35,12 @@ static void send_reply(const char *to, const char *msg) {
 
     // Build the full reply: "<UnitID>: <msg>"
     char buffer[512];
-    snprintf(buffer, sizeof(buffer), "%s %s", unit_id, msg);
+    snprintf(buffer, sizeof(buffer), "%s: %s", unit_id, message);
 
-    // Send it
-    ESP_LOGW(TAG, "Sending reply to %s: %s", to, buffer);
-    send_sms_async(to, buffer);
+
+    if (!to_number || !message) return;
+
+    modem_send_sms(to_number, buffer);
 
 }
 
@@ -65,18 +69,16 @@ static void parse_command(const sms_message_t *sms) {
     }
 
     if (strcasecmp(cmd, "SIGNAL") == 0) {
-        int rssi; 
-        char level[16];
+        int rssi = 0;
+        char quality[16];
     
-
-        if (get_signal_quality(&rssi, level, sizeof(level))) {
-            snprintf(response, sizeof(response), "Signal: RSSI=%d (%s)", rssi, level);
-            send_reply(sms->sender, response);
+        if (signal_quality(&rssi, quality, sizeof(quality))) {
+            char reply[64];
+            snprintf(reply, sizeof(reply), "Signal RSSI: %d (%s)", rssi, quality);
+            send_reply(sms->sender, reply);
         } else {
-            send_reply(sms->sender, "Signal check failed");
+            send_reply(sms->sender, "Failed to get signal quality.");
         }
-        send_reply(sms->sender, response);
-
         return;
     }
 

@@ -10,7 +10,6 @@
 #include "config_store.h"
 #include "nvs_flash.h"
 #include "config_store.h"
-#include "sms_sender.h"
 
 #define GPS_UART_NUM UART_NUM_2
 #define GPS_UART_TX_PIN GPS_TX 
