@@ -35,6 +35,7 @@ static void send_reply(const char *to, const char *msg) {
     snprintf(buffer, sizeof(buffer), "%s %s", unit_id, msg);
 
     // Send it
+    ESP_LOGW(TAG, "Sending reply to %s: %s", to, buffer);
     send_sms_async(to, buffer);
 
 }
@@ -64,10 +65,18 @@ static void parse_command(const sms_message_t *sms) {
     }
 
     if (strcasecmp(cmd, "SIGNAL") == 0) {
-        int rssi = 18; // placeholder
-        const char *quality = (rssi < 10) ? "Poor" : (rssi < 20) ? "Good" : "Great";
-        snprintf(response, sizeof(response), "Signal: RSSI=%d (%s)", rssi, quality);
+        int rssi; 
+        char level[16];
+    
+
+        if (get_signal_quality(&rssi, level, sizeof(level))) {
+            snprintf(response, sizeof(response), "Signal: RSSI=%d (%s)", rssi, level);
+            send_reply(sms->sender, response);
+        } else {
+            send_reply(sms->sender, "Signal check failed");
+        }
         send_reply(sms->sender, response);
+
         return;
     }
 
@@ -124,6 +133,7 @@ static void parse_command(const sms_message_t *sms) {
     if (strcasecmp(cmd, "BATTV") == 0) {
         float v = get_battery_voltage(); // should be defined in adc/sensor module
         snprintf(response, sizeof(response), "Battery: %.2f V", v);
+        ESP_LOGI(TAG, "Battery voltage: %.2f V", v);
         send_reply(sms->sender, response);
         return;
     }

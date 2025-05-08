@@ -12,6 +12,10 @@
 //Logging Tag
 static const char* TAG = "MODEM";
 
+#define MODEM_RESP_BUF 256
+#define MODEM_CMD_QUEUE_LEN 8
+QueueHandle_t modem_cmd_queue = NULL;
+
 // Global variable to store last received SMS index.
 static int last_sms_index = -1;
 
@@ -62,42 +66,148 @@ static void safe_uart_write(const char *data, size_t len)
 }
 
 // === SEND RAW AT COMMAND ===
+bool modem_send_cmd(const char *cmd, char *response_buf, size_t buf_len, int timeout_ms)
+{
+    modem_cmd_t req = {
+        .response_len = buf_len
+    };
+    strncpy(req.command, cmd, sizeof(req.command) - 1);
+    memset(response_buf, 0, buf_len);
+    req.response[0] = '\0';
+    req.done = xSemaphoreCreateBinary();
+
+    if (!req.done) return false;
+
+    if (!xQueueSend(modem_cmd_queue, &req, pdMS_TO_TICKS(100))) {
+        vSemaphoreDelete(req.done);
+        return false;
+    }
+
+    if (xSemaphoreTake(req.done, pdMS_TO_TICKS(timeout_ms))) {
+        strncpy(response_buf, req.response, buf_len - 1);
+        vSemaphoreDelete(req.done);
+        return req.success;
+    }
+
+    vSemaphoreDelete(req.done);
+    return false;
+}
+
+
+
 void sim800_send_cmd(const char *cmd)
 {
-    safe_uart_write(cmd, strlen(cmd));
-    safe_uart_write("\r\n", 2);
+    modem_cmd_t req = {
+        .response_len = 1  // minimal buffer to satisfy structure
+    };
+    strncpy(req.command, cmd, sizeof(req.command) - 1);
+    req.response[0] = '\0';
+    req.done = xSemaphoreCreateBinary();
+
+    if (!req.done) return;
+
+    // Send the command to ModemTask
+    if (xQueueSend(modem_cmd_queue, &req, pdMS_TO_TICKS(100))) {
+        // Wait briefly just to let it process, but ignore outcome
+        xSemaphoreTake(req.done, pdMS_TO_TICKS(300));
+    }
+
+    vSemaphoreDelete(req.done);
 }
+
 
 // === INIT SMS RECEIVING MODE ===
 void sim800_setup_sms()
 {
-    sim800_send_cmd("ATE0");   // disable local echo of AT commands
+    sim800_send_cmd("ATE0");   // disable echo
     vTaskDelay(pdMS_TO_TICKS(300));
 
-    sim800_send_cmd("AT+CMGF=1");           // text mode
+    sim800_send_cmd("AT+CMGF=1");  // text mode
     vTaskDelay(pdMS_TO_TICKS(500));
 
-    // deliver full SMS (header + body) as soon as it arrives
-    sim800_send_cmd("AT+CNMI=2,1,0,0,0");    
+    sim800_send_cmd("AT+CMGDA=\"DEL ALL\"");  // delete all
     vTaskDelay(pdMS_TO_TICKS(500));
 
-    ESP_LOGI(TAG, "SMS mode: text + push new SMS to UART");
+    sim800_send_cmd("AT+CNMI=2,1,0,0,0");  // push SMS immediately
+    vTaskDelay(pdMS_TO_TICKS(500));
+
+    uart_flush_input(SIM800L_UART_PORT);  // just in case
+
+    ESP_LOGI(TAG, "GSM Modem initialized and ready to receive SMS messages.");
 }
+
+
+
+//Signal quality function
+bool get_signal_quality(int *rssi_out, char *rating, size_t rating_len)
+{
+    if (!modem_cmd_queue || !uart_mutex) return false;
+
+    modem_cmd_t req = {
+        .response_len = sizeof(req.response),
+        .done = xSemaphoreCreateBinary(),
+        .success = false
+    };
+
+    if (!req.done) return false;
+
+    strncpy(req.command, "AT+CSQ", sizeof(req.command) - 1);
+
+    if (!xQueueSend(modem_cmd_queue, &req, pdMS_TO_TICKS(100))) {
+        vSemaphoreDelete(req.done);
+        return false;
+    }
+
+    if (!xSemaphoreTake(req.done, pdMS_TO_TICKS(2000))) {
+        vSemaphoreDelete(req.done);
+        return false;
+    }
+
+    vSemaphoreDelete(req.done);
+
+    if (!req.success) return false;
+
+    // Parse "+CSQ: <rssi>,<ber>"
+    int rssi = -1, ber = -1;
+    if (sscanf(req.response, "+CSQ: %d,%d", &rssi, &ber) != 2) {
+        return false;
+    }
+
+    if (rssi_out) *rssi_out = rssi;
+
+    if (rating && rating_len > 0) {
+        const char *level =
+            (rssi == 99) ? "Unknown" :
+            (rssi <= 2)  ? "None" :
+            (rssi <= 9)  ? "Poor" :
+            (rssi <= 14) ? "Fair" :
+            (rssi <= 19) ? "Good" :
+            (rssi <= 30) ? "Great" : "Excellent";
+
+        snprintf(rating, rating_len, "%s", level);
+    }
+
+    return true;
+}
+
+
+
+
+
+
+
 
 
 
 // === SEND SMS FUNCTION ===
 void send_sms(const char *number, const char *message)
 {
-    char buf[256];
-
-    // 1. Set text mode
-    sim800_send_cmd("AT+CMGF=1");
-    vTaskDelay(pdMS_TO_TICKS(300));
+    char buf[512];
 
     // 2. Flush UART input (get rid of any previous junk)
     uart_flush_input(SIM800L_UART_PORT);
 
+    
     // 3. Send the SMS command
     snprintf(buf, sizeof(buf), "AT+CMGS=\"%s\"\r\n", number);
     safe_uart_write(buf, strlen(buf));
@@ -113,12 +223,10 @@ void send_sms(const char *number, const char *message)
     ESP_LOGI("MODEM", "📤 SMS to %s: %s", number, message);
 
     // 7. Wait up to 10s for the module to process and send
-    vTaskDelay(pdMS_TO_TICKS(10000));
+    vTaskDelay(pdMS_TO_TICKS(3000));
 
-    // 8. Flush UART again to discard trailing OK or +CMGS
-    uart_flush_input(SIM800L_UART_PORT);
+    
 }
-
 
 // Flush any received bytes
 static void flush_rx(void) {
@@ -186,56 +294,82 @@ void message_parser(const char *sender, const char *message)
 
 // === MODEM TASK ===
 void ModemTask(void *param) {
-    // Create the UART mutex if it hasn't been created.
+
     if (uart_mutex == NULL) {
         uart_mutex = xSemaphoreCreateMutex();
     }
 
+    if (modem_cmd_queue == NULL) {
+        modem_cmd_queue = xQueueCreate(8, sizeof(modem_cmd_t));
+    }
 
     sim800c_init();
     sim800c_power_on();
     vTaskDelay(pdMS_TO_TICKS(5000));
 
-    
-    
     sim800_setup_sms();
-
     flush_rx();
 
     uint8_t data[SIM800L_UART_BUF_SIZE];
+    modem_cmd_t req;
 
     while (1) {
+        
+        // === Process AT Command Requests ===
+        if (xQueueReceive(modem_cmd_queue, &req, 0) == pdTRUE) {
+            uart_flush_input(SIM800L_UART_PORT);
+
+            char full_cmd[80];
+            snprintf(full_cmd, sizeof(full_cmd), "%s\r\n", req.command);
+            safe_uart_write(full_cmd, strlen(full_cmd));
+
+            char buf[256] = {0};
+            int total_wait = 0;
+            req.success = false;
+
+            while (total_wait < 2000) {
+                int len = uart_read_bytes(SIM800L_UART_PORT, (uint8_t*)buf, sizeof(buf) - 1, pdMS_TO_TICKS(100));
+                if (len > 0) {
+                    buf[len] = '\0';
+
+                    if (strstr(buf, "OK")) {
+                        req.success = true;
+                    }
+                    strncpy(req.response, buf, req.response_len - 1);
+                    if (strstr(buf, "OK") || strstr(buf, "ERROR")) break;
+                }
+                total_wait += 100;
+            }
+
+            uart_flush_input(SIM800L_UART_PORT);
+            xSemaphoreGive(req.done);
+            continue; // Skip SMS handling this cycle
+        }
+
+        // === SMS Receive Handling ===
         int len = uart_read_bytes(SIM800L_UART_PORT, data, SIM800L_UART_BUF_SIZE - 1, pdMS_TO_TICKS(1000));
         if (len > 0) {
             data[len] = '\0';
-            //ESP_LOGI("MODEM", "Received data: %s", (char *)data);
-            // 1. Handle new SMS notification: +CMTI: "SM",index
+
             char *cmti = strstr((char *)data, "+CMTI:");
             if (cmti) {
                 if (sscanf(cmti, "+CMTI: \"SM\",%d", &last_sms_index) == 1 && last_sms_index >= 0) {
                     char cmd[32];
                     snprintf(cmd, sizeof(cmd), "AT+CMGR=%d", last_sms_index);
                     sim800_send_cmd(cmd);
-                    vTaskDelay(pdMS_TO_TICKS(1000)); // Allow time for the response
+                    vTaskDelay(pdMS_TO_TICKS(1000));
                 }
             }
 
-            // 2. Handle SMS read result: +CMGR: ...
             char *cmgr = strstr((char *)data, "+CMGR:");
             if (cmgr) {
                 char sender[32] = {0};
                 char message[160] = {0};
-
-                // Extract sender number.
                 sscanf(cmgr, "+CMGR: \"REC UNREAD\",\"%[^\"]", sender);
-
-                // Find the message text start (assumes it follows a newline).
                 char *msg_start = strchr(cmgr, '\n');
                 if (msg_start) {
-                    msg_start += 1;  // Skip the newline.
+                    msg_start += 1;
                     strncpy(message, msg_start, sizeof(message) - 1);
-
-                    // Process the SMS.
                     message_parser(sender, message);
                 }
             }

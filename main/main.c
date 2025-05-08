@@ -120,6 +120,7 @@ void app_main(void)
     //create queues
     output_queue = xQueueCreate(10, sizeof(output_cmd_t));         //create the output queue
     rx_message_queue = xQueueCreate(10, sizeof(sms_message_t));    // create SMS queue
+    modem_cmd_queue = xQueueCreate(MODEM_CMD_QUEUE_LEN, sizeof(modem_cmd_t));
 
     //start sms sender task
     start_sms_sender();

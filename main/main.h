@@ -22,7 +22,7 @@
 #endif
 
 
-
+#define MODEM_CMD_QUEUE_LEN 8
 
 //
 // Function Declarations

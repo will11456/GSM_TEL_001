@@ -221,6 +221,7 @@ void ADCTask(void *pvParameter)
     uint16_t an;
     uint16_t cur;
     uint16_t res;
+    float batt;
 
     while (1) {
 
@@ -230,8 +231,9 @@ void ADCTask(void *pvParameter)
         vTaskDelay(pdMS_TO_TICKS(50));
         res = read_res_inputs();
         vTaskDelay(pdMS_TO_TICKS(50));
-        //ESP_LOGI(TAG, "Analog: %d  Current: %d  Resist: %d",an, cur, res); 
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        batt = get_battery_voltage();
+        //ESP_LOGI(TAG, "Analog: %d  Current: %d  Resist: %d   Batt:  %f",an, cur, res, batt); 
+        vTaskDelay(pdMS_TO_TICKS(5000));
 
        
     }
