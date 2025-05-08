@@ -138,7 +138,11 @@ void app_main(void)
 
     vTaskDelay(10000 / portTICK_PERIOD_MS);
 
-    //send_sms("07852709248", "Hi from ESP32 using ESP-IDF!");
-
+    // while(1){
+        
+    //     report_gps_status();
+        
+    //     vTaskDelay(1000 / portTICK_PERIOD_MS); // Delay for 1 second before checking again
+    // }
 
 }

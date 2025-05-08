@@ -16,6 +16,7 @@
 #include "tmp102.h"
 #include "output.h"
 #include "config_store.h"
+#include "gps.h"
 
 
 //Logging Tag
@@ -127,7 +128,31 @@ static void parse_command(const sms_message_t *sms) {
             snprintf(response, sizeof(response), "TEMP sensor error");
         }
 
-        // <— use your ID‑prefixing helper so SMS goes out
+        send_reply(sms->sender, response);
+        return;
+    }
+
+    if (strcasecmp(cmd, "LOCATION") == 0) {
+        gps_data_t gps_data = gps_get_data();
+
+        if (!gps_has_lock()) {
+            send_reply(sms->sender, "No GPS Fix");
+            return;
+        }
+        else {
+        char time_str[6];
+        gps_format_time_hhmm(gps_data.time, time_str, sizeof(time_str));    
+        snprintf(response, sizeof(response), "GPS Location at %s GMT  http://map.google.com/?q=%.6f,%.6f", time_str, gps_data.latitude, gps_data.longitude); 
+        send_reply(sms->sender, response);
+        return;
+        }
+    }
+    
+    if (strcasecmp(cmd, "GPS") == 0) {
+        gps_data_t gps_data = gps_get_data();
+        char time_str[6];
+        gps_format_time_hhmm(gps_data.time, time_str, sizeof(time_str));    
+        snprintf(response, sizeof(response), "GPS: %s GMT Lat: %.6f Lon: %.6f Alt: %.2f m HDOP: %.2f Sats: %d", time_str, gps_data.latitude, gps_data.longitude, gps_data.altitude, gps_data.hdop, gps_data.satellites_used);
         send_reply(sms->sender, response);
         return;
     }

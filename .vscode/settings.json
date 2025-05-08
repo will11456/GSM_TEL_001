@@ -32,6 +32,7 @@
         "nvs_flash.h": "c",
         "stdbool.h": "c",
         "event_groups.h": "c",
-        "stdint.h": "c"
+        "stdint.h": "c",
+        "stdio.h": "c"
     }
 }
