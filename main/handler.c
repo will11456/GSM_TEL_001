@@ -3,11 +3,6 @@
 #include <stdio.h>
 #include <ctype.h>
 #include "main.h"
-#include <stdint.h>
-
-#include <stdint.h>
-#include <stddef.h>
-#include "main.h"
 #include "pin_map.h"
 #include "adc.h"
 #include "modem.h"
@@ -18,31 +13,158 @@
 #include "config_store.h"
 #include "gps.h"
 
-
-//Logging Tag
 static const char* TAG = "HANDLER";
 
 extern QueueHandle_t rx_message_queue;
 
+input_monitor_config_t cur_config;
+input_monitor_config_t alg_config;
+input_monitor_config_t res_config;
+
+static bool already_triggered_cur = false;
+static bool already_triggered_alg = false;
+static bool already_triggered_res = false;
+
+// Utility function
+static bool should_trigger(float value, const input_monitor_config_t *cfg) {
+    switch(cfg->type) {
+        case THRESH_OFF:
+            return false;
+        case THRESH_LIMIT:
+            if (cfg->cond == COND_OVER)  return value > cfg->value1;
+            if (cfg->cond == COND_UNDER) return value < cfg->value1;
+            break;
+        case THRESH_RANGE:
+            if (cfg->cond == COND_INSIDE)  return (value >= cfg->value1 && value <= cfg->value2);
+            if (cfg->cond == COND_OUTSIDE) return (value < cfg->value1 || value > cfg->value2);
+            break;
+        default:
+            break;
+    }
+    return false;
+}
+
+
+void check_input_conditions(float cur, float alg, float res) {
+    // CUR
+    if (cur_config.type != THRESH_OFF && should_trigger(cur, &cur_config)) {
+        if (!already_triggered_cur) {
+            // 1. Send SMS to CUR log (use your log/number logic)
+            char numbers[256];
+            ESP_LOGW(TAG, "CUR condition met: %f", cur);
+            if (config_store_list_log("CUR", numbers, sizeof(numbers)) == ESP_OK && strlen(numbers) > 0) {
+                char *token = strtok(numbers, ",");
+                while (token) {
+                    modem_send_sms(token, "CUR condition met!");
+                    token = strtok(NULL, ",");
+                }
+            }
+            // 2. Activate output if needed
+            if (cur_config.output == OUT1) {
+                output_cmd_t o = { .id = OUTPUT_ID_1, .level = 1 };
+                output_controller_send(&o);
+            }
+            if (cur_config.output == OUT2) {
+                output_cmd_t o = { .id = OUTPUT_ID_2, .level = 1 };
+                output_controller_send(&o);
+            }
+            already_triggered_cur = true;
+        }
+    } else {
+        already_triggered_cur = false;
+    }
+
+    // ALG
+    if (alg_config.type != THRESH_OFF && should_trigger(alg, &alg_config)) {
+        if (!already_triggered_alg) {
+            char numbers[256];
+            ESP_LOGW(TAG, "ALG condition met: %f", alg);
+            if (config_store_list_log("ALG", numbers, sizeof(numbers)) == ESP_OK && strlen(numbers) > 0) {
+                char *token = strtok(numbers, ",");
+                while (token) {
+                    modem_send_sms(token, "ALG condition met!");
+                    token = strtok(NULL, ",");
+                }
+            }
+            if (cur_config.output == OUT1) {
+                output_cmd_t o = { .id = OUTPUT_ID_1, .level = 1 };
+                output_controller_send(&o);
+            }
+            if (cur_config.output == OUT2) {
+                output_cmd_t o = { .id = OUTPUT_ID_2, .level = 1 };
+                output_controller_send(&o);
+            }
+            already_triggered_alg = true;
+        }
+    } else {
+        already_triggered_alg = false;
+    }
+
+    // RES
+    if (res_config.type != THRESH_OFF && should_trigger(res, &res_config)) {
+        if (!already_triggered_res) {
+            char numbers[256];
+            ESP_LOGW(TAG, "RES condition met: %f", res);
+            if (config_store_list_log("RES", numbers, sizeof(numbers)) == ESP_OK && strlen(numbers) > 0) {
+                char *token = strtok(numbers, ",");
+                while (token) {
+                    modem_send_sms(token, "RES condition met!");
+                    token = strtok(NULL, ",");
+                }
+            }
+            if (cur_config.output == OUT1) {
+                output_cmd_t o = { .id = OUTPUT_ID_1, .level = 1 };
+                output_controller_send(&o);
+            }
+            if (cur_config.output == OUT2) {
+                output_cmd_t o = { .id = OUTPUT_ID_2, .level = 1 };
+                output_controller_send(&o);
+            }
+            already_triggered_res = true;
+        }
+    } else {
+        already_triggered_res = false;
+    }
+}
+
+// Helper functions as described earlier
+
+output_action_t parse_output(const char *s) {
+    if (strcasecmp(s, "OUT1") == 0) return OUT1;
+    if (strcasecmp(s, "OUT2") == 0) return OUT2;
+    return OUT_NONE;
+}
+
+threshold_type_t parse_type(const char *s) {
+    if (strcasecmp(s, "OFF") == 0)   return THRESH_OFF;
+    if (strcasecmp(s, "LIMIT") == 0) return THRESH_LIMIT;
+    if (strcasecmp(s, "RANGE") == 0) return THRESH_RANGE;
+    return THRESH_OFF;
+}
+
+condition_t parse_condition(const char *s) {
+    if (strcasecmp(s, "OVER") == 0)    return COND_OVER;
+    if (strcasecmp(s, "UNDER") == 0)   return COND_UNDER;
+    if (strcasecmp(s, "INSIDE") == 0)  return COND_INSIDE;
+    if (strcasecmp(s, "OUTSIDE") == 0) return COND_OUTSIDE;
+    return COND_NONE;
+}
+
 void send_reply(const char *to_number, const char *message)
 {
-
     char unit_id[32];
     // Try to fetch the stored Unit ID; default to "Unit ID" on error
     if (config_store_get_unit_id(unit_id, sizeof(unit_id)) != ESP_OK) {
         strncpy(unit_id, "Unit ID", sizeof(unit_id)-1);
         unit_id[sizeof(unit_id)-1] = '\0';
     }
-
-    // Build the full reply: "<UnitID>: <msg>"
     char buffer[512];
     snprintf(buffer, sizeof(buffer), "%s: %s", unit_id, message);
-
 
     if (!to_number || !message) return;
 
     modem_send_sms(to_number, buffer);
-
+    ESP_LOGI(TAG, "Reply sent to %s: %s", to_number, buffer);
 }
 
 static void trim(char *str) {
@@ -53,6 +175,80 @@ static void trim(char *str) {
     while (end > str && isspace((unsigned char)*end)) *end-- = '\0';
 }
 
+// ---- NEW CUR/ALG/RES handler ----
+// Assumes: input_type = "CUR" or "ALG" or "RES"
+// params:  points to string after <INPUT> (e.g. "OUT1 LIMIT 2.5 OVER")
+// sender:  the phone number to reply to
+
+void handle_input_config(const char *input_type, const char *params, const char *sender)
+{
+    char out_str[8] = {0}, type_str[16] = {0}, arg3[16] = {0}, arg4[16] = {0}, arg5[16] = {0};
+    char reply[160];
+    int n = sscanf(params, "%7s %15s %15s %15s %15s", out_str, type_str, arg3, arg4, arg5);
+
+    input_monitor_config_t config = {0};
+
+    // --- Output ---
+    if      (strcasecmp(out_str, "OUT1") == 0) config.output = OUT1;
+    else if (strcasecmp(out_str, "OUT2") == 0) config.output = OUT2;
+    else if (strcasecmp(out_str, "NONE") == 0) config.output = OUT_NONE;
+    else {
+        snprintf(reply, sizeof(reply), "Invalid output '%s'. Use OUT1, OUT2, or NONE.", out_str);
+        send_reply(sender, reply);
+        return;
+    }
+
+    // --- OFF ---
+    if (strcasecmp(type_str, "OFF") == 0 && n >= 2) {
+        config.type = THRESH_OFF;
+        config.value1 = config.value2 = 0;
+        config.cond = COND_NONE;
+        snprintf(reply, sizeof(reply), "%s monitoring disabled.", input_type);
+    }
+    // --- LIMIT ---
+    else if (strcasecmp(type_str, "LIMIT") == 0 && n >= 4) {
+        config.type = THRESH_LIMIT;
+        config.value1 = atof(arg3);
+        if      (strcasecmp(arg4, "OVER") == 0)  config.cond = COND_OVER;
+        else if (strcasecmp(arg4, "UNDER") == 0) config.cond = COND_UNDER;
+        else {
+            snprintf(reply, sizeof(reply), "Invalid condition '%s'. Use OVER or UNDER.", arg4);
+            send_reply(sender, reply);
+            return;
+        }
+        snprintf(reply, sizeof(reply), "%s: %s, LIMIT %.2f %s -> %s", input_type, out_str, config.value1, arg4, out_str);
+    }
+    // --- RANGE ---
+    else if (strcasecmp(type_str, "RANGE") == 0 && n >= 5) {
+        config.type = THRESH_RANGE;
+        config.value1 = atof(arg3);
+        config.value2 = atof(arg4);
+        if      (strcasecmp(arg5, "INSIDE") == 0)  config.cond = COND_INSIDE;
+        else if (strcasecmp(arg5, "OUTSIDE") == 0) config.cond = COND_OUTSIDE;
+        else {
+            snprintf(reply, sizeof(reply), "Invalid condition '%s'. Use INSIDE or OUTSIDE.", arg5);
+            send_reply(sender, reply);
+            return;
+        }
+        snprintf(reply, sizeof(reply), "%s: %s, RANGE %.2f-%.2f %s -> %s", input_type, out_str, config.value1, config.value2, arg5, out_str);
+    }
+    // --- Error ---
+    else {
+        snprintf(reply, sizeof(reply), "Invalid command format for %s. See: %s OUT1 OFF, %s OUT1 LIMIT <v> OVER, %s OUT1 RANGE <lo> <hi> INSIDE", input_type, input_type, input_type, input_type);
+        send_reply(sender, reply);
+        return;
+    }
+
+    // --- Save to flash ---
+    if      (strcasecmp(input_type, "CUR") == 0) { config_store_save_cur_config(&config); cur_config = config; }
+    else if (strcasecmp(input_type, "ALG") == 0) { config_store_save_alg_config(&config); alg_config = config; }
+    else if (strcasecmp(input_type, "RES") == 0) { config_store_save_res_config(&config); res_config = config; }
+
+    send_reply(sender, reply);
+}
+
+
+// ---- Main parser ----
 static void parse_command(const sms_message_t *sms) {
     char *cmd = sms->message;
     char response[512];
@@ -62,6 +258,12 @@ static void parse_command(const sms_message_t *sms) {
     cmd += 4;
     trim(cmd);
 
+    // CUR/ALG/RES config command (first token)
+    if (strncasecmp(cmd, "CUR ", 4) == 0) { handle_input_config("CUR", cmd + 4, sms->sender); return; }
+    if (strncasecmp(cmd, "ALG ", 4) == 0) { handle_input_config("ALG", cmd + 4, sms->sender); return; }
+    if (strncasecmp(cmd, "RES ", 4) == 0) { handle_input_config("RES", cmd + 4, sms->sender); return; }
+
+    // Everything below here is your existing commands, unchanged.
     if (sscanf(cmd, "SETID %31[^\n]", arg1) == 1) {
         config_store_set_unit_id(arg1);
         snprintf(response, sizeof(response), "ID set to %s", arg1);
@@ -72,7 +274,6 @@ static void parse_command(const sms_message_t *sms) {
     if (strcasecmp(cmd, "SIGNAL") == 0) {
         int rssi = 0;
         char quality[16];
-    
         if (signal_quality(&rssi, quality, sizeof(quality))) {
             char reply[64];
             snprintf(reply, sizeof(reply), "Signal RSSI: %d (%s)", rssi, quality);
@@ -115,36 +316,30 @@ static void parse_command(const sms_message_t *sms) {
     }
 
     if (strcasecmp(cmd, "TEMP") == 0) {
-        
         float temp_c;
-        
         if (tmp102_read_celsius(&temp_c) == ESP_OK) {
             ESP_LOGI(TAG, "Temperature: %.2f°C", temp_c);
             snprintf(response, sizeof(response), "Temperature: %.2f C", temp_c);
-
         } 
         else {
             ESP_LOGE(TAG, "Error reading temperature");
             snprintf(response, sizeof(response), "TEMP sensor error");
         }
-
         send_reply(sms->sender, response);
         return;
     }
 
     if (strcasecmp(cmd, "LOCATION") == 0) {
         gps_data_t gps_data = gps_get_data();
-
         if (!gps_has_lock()) {
             send_reply(sms->sender, "No GPS Fix");
             return;
-        }
-        else {
-        char time_str[6];
-        gps_format_time_hhmm(gps_data.time, time_str, sizeof(time_str));    
-        snprintf(response, sizeof(response), "GPS Location at %s GMT  http://map.google.com/?q=%.6f,%.6f", time_str, gps_data.latitude, gps_data.longitude); 
-        send_reply(sms->sender, response);
-        return;
+        } else {
+            char time_str[6];
+            gps_format_time_hhmm(gps_data.time, time_str, sizeof(time_str));    
+            snprintf(response, sizeof(response), "GPS Location at %s GMT  http://map.google.com/?q=%.6f,%.6f", time_str, gps_data.latitude, gps_data.longitude); 
+            send_reply(sms->sender, response);
+            return;
         }
     }
     
@@ -181,31 +376,7 @@ static void parse_command(const sms_message_t *sms) {
         return;
     }
 
-    if (sscanf(cmd, "%31s %31s %31s %31s", arg1, arg2, arg3, arg4) >= 2) {
-        input_mapping_t map = {0};
-        strncpy(map.output, arg2, sizeof(map.output)-1);
-        if (strcasecmp(arg1, "VALARM") == 0 && sscanf(arg2, "%d", &map.threshold1) == 1) {
-            voltage_alarm_config_t vcfg = {
-                .threshold_mv = map.threshold1,
-            };
-            strncpy(vcfg.output, arg3, sizeof(vcfg.output)-1);
-            config_store_set_voltage_alarm(&vcfg);
-            snprintf(response, sizeof(response), "Voltage alarm set: %dmV → %s", vcfg.threshold_mv, vcfg.output);
-            send_reply(sms->sender, response);
-            return;
-        }
-
-        if (strcasecmp(arg1, "IN1") == 0 || strcasecmp(arg1, "IN2") == 0 ||
-            strcasecmp(arg1, "CUR") == 0 || strcasecmp(arg1, "ALG") == 0 || strcasecmp(arg1, "RES") == 0) {
-            strncpy(map.mode, arg3, sizeof(map.mode)-1);
-            map.threshold1 = atoi(arg4);
-            config_store_set_mapping(arg1, &map);
-            snprintf(response, sizeof(response), "%s mapped to %s [%s %d]", arg1, map.output, map.mode, map.threshold1);
-            send_reply(sms->sender, response);
-            return;
-        }
-    }
-
+    // Any unknown or invalid command
     send_reply(sms->sender, "Unknown or invalid command");
 }
 
