@@ -101,7 +101,7 @@ void app_main(void)
     //Enable 4V rail for modem
     EnableModemRail();
 
-    //init modem and uart 1
+    //init modem and UART1
     modem_init();
 
     //Init NVS
@@ -115,12 +115,8 @@ void app_main(void)
 
     vTaskDelay(1000 / portTICK_PERIOD_MS);
 
-    //init GPS
+    //init GPS and UART2
     gps_init();
-
-
-    //create queues
-    output_queue = xQueueCreate(10, sizeof(output_cmd_t));         //create the output queue
 
 
 

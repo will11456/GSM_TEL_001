@@ -24,7 +24,8 @@ static const gpio_num_t output_pins[] = {
 
 void OutputTask(void *pvParameters)
 {   
-
+    output_queue = xQueueCreate(10, sizeof(output_cmd_t));         //create the output queue
+    
     output_cmd_t cmd;
     // Configure all output pins:
     for (int i = 0; i < sizeof(output_pins)/sizeof(output_pins[0]); i++) {

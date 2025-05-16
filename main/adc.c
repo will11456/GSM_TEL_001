@@ -232,11 +232,12 @@ void ADCTask(void *pvParameter)
         res = read_res_inputs();
         vTaskDelay(pdMS_TO_TICKS(50));
         batt = get_battery_voltage();
+        vTaskDelay(pdMS_TO_TICKS(50));
 
         check_input_conditions(cur, an, res);
 
         ESP_LOGI(TAG, "Analog: %d  Current: %d  Resist: %d   Batt:  %f",an, cur, res, batt); 
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        vTaskDelay(pdMS_TO_TICKS(100));
 
        
     }
