@@ -25,6 +25,30 @@ static bool already_triggered_cur = false;
 static bool already_triggered_alg = false;
 static bool already_triggered_res = false;
 
+void restore_input_configs_from_flash(void){
+    if (config_store_load_cur_config(&cur_config) != ESP_OK) {
+        // First boot or corrupt, set defaults
+        memset(&cur_config, 0, sizeof(cur_config));
+        cur_config.type = THRESH_OFF;
+        config_store_save_cur_config(&cur_config);
+    }
+
+    // Load ALG config
+    if (config_store_load_alg_config(&alg_config) != ESP_OK) {
+        memset(&alg_config, 0, sizeof(alg_config));
+        alg_config.type = THRESH_OFF;
+        config_store_save_alg_config(&alg_config);
+    }
+
+    // Load RES config
+    if (config_store_load_res_config(&res_config) != ESP_OK) {
+        memset(&res_config, 0, sizeof(res_config));
+        res_config.type = THRESH_OFF;
+        config_store_save_res_config(&res_config);
+    }
+
+}
+
 // Utility function
 static bool should_trigger(float value, const input_monitor_config_t *cfg) {
     switch(cfg->type) {

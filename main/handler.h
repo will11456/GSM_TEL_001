@@ -48,6 +48,9 @@ void SmsHandlerTask(void *param);
 
 void check_input_conditions(float cur, float alg, float res);
 
+void restore_input_configs_from_flash(void);  // Load config for each input type from flash
+
+
 #ifdef __cplusplus
 }
 #endif

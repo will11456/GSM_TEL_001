@@ -22,10 +22,6 @@ static const char* TAG = "MAIN";
 TaskHandle_t adcTaskHandle = NULL;
 TaskHandle_t modemTaskHandle = NULL;
 
-input_monitor_config_t cur_config = {0};
-input_monitor_config_t alg_config = {0};
-input_monitor_config_t res_config = {0};
-
 
 void GPIOInit(void)
 {
@@ -86,15 +82,11 @@ void EnableModemRail(void)
     ESP_LOGW(TAG, "4V Rail Enabled");
 }
 
-void restore_input_configs_from_flash(void) {
-    // Load config for each input type from flash
-    
+
 
 void app_main(void)
 {
 
-    //retrieve config
-    restore_input_configs_from_flash();
 
     //create mutexs
     gps_mutex = xSemaphoreCreateMutex();
@@ -113,6 +105,9 @@ void app_main(void)
 
     //Init NVS
     config_store_init();
+
+    //retrieve config
+    restore_input_configs_from_flash();
 
     //init GPS and UART2
     gps_init();
