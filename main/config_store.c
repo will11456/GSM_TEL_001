@@ -68,7 +68,15 @@ static esp_err_t load_blob(const char *key, void *data, size_t len) {
 
 // === INIT / RESET ===
 void config_store_init(void) {
-    // NVS already initialized by app
+    esp_err_t err = nvs_flash_init();
+    if (err == ESP_ERR_NVS_NO_FREE_PAGES ||
+        err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        err = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(err);
+
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
 }
 
 esp_err_t config_store_reset_defaults(void) {

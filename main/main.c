@@ -17,12 +17,14 @@
 #include "config_store.h"
 
 
-
-
-
 static const char* TAG = "MAIN";
 
+TaskHandle_t adcTaskHandle = NULL;
+TaskHandle_t modemTaskHandle = NULL;
 
+input_monitor_config_t cur_config = {0};
+input_monitor_config_t alg_config = {0};
+input_monitor_config_t res_config = {0};
 
 
 void GPIOInit(void)
@@ -84,13 +86,18 @@ void EnableModemRail(void)
     ESP_LOGW(TAG, "4V Rail Enabled");
 }
 
+void restore_input_configs_from_flash(void) {
+    // Load config for each input type from flash
+    
 
 void app_main(void)
 {
 
+    //retrieve config
+    restore_input_configs_from_flash();
+
     //create mutexs
     gps_mutex = xSemaphoreCreateMutex();
-
 
     //Initialize GPIO
     GPIOInit();
@@ -105,15 +112,7 @@ void app_main(void)
     modem_init();
 
     //Init NVS
-    esp_err_t err = nvs_flash_init();
-    if (err == ESP_ERR_NVS_NO_FREE_PAGES ||
-        err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-        ESP_ERROR_CHECK(nvs_flash_erase());
-        err = nvs_flash_init();
-    }
-    ESP_ERROR_CHECK(err);
-
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    config_store_init();
 
     //init GPS and UART2
     gps_init();
@@ -122,7 +121,7 @@ void app_main(void)
 
     //Start Tasks
     xTaskCreate(OutputTask, "OutputTask", 2048, NULL, 5, NULL);
-    xTaskCreate(ADCTask, "read_ads1115_task", 2048*8, NULL, 10, NULL);
+    xTaskCreate(ADCTask, "read_ads1115_task", 2048*8, NULL, 10, &adcTaskHandle);
     xTaskCreate(ModemTask, "modem_task", 2048*8, NULL, 11, NULL);
     xTaskCreate(SmsHandlerTask, "SmsHandlerTask", 4096, NULL, 5, NULL);
     //xTaskCreate(InputTask, "InputTask", 2048, NULL, 5, NULL);

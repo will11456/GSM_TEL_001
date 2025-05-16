@@ -2,7 +2,6 @@
 #define ADS1115_H
 
 
-
 // I2C address options for ADS1115
 #define ADC1 0x48 // ADDR pin connected to GND
 
@@ -21,6 +20,9 @@
 #define ADS1115_CONFIG_PGA_4_096V  (0x0000) // +/-4.096V range
 #define ADS1115_CONFIG_MODE_SINGLE (0x0100) // Single-shot mode
 #define ADS1115_CONFIG_DR_128SPS   (0x0080) // 128 samples per second
+
+
+
 
 // Function prototypes
 esp_err_t i2c_master_init(void);

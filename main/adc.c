@@ -15,7 +15,7 @@
 #include "output.h"
 #include "config_store.h"
 
-
+float battery_volts;
 
 //I2C Interface Setup
 #define I2C_MASTER_NUM I2C_NUM_0 // I2C port number for master dev
@@ -33,9 +33,12 @@
 #define ANALOG_INPUT_MULTIPLIER 2.5        // Conversion factor for ADC input to voltage
 #define RES_INPUT_MULTIPLIER    5.657
 #define BATT_DIVIDER            5.4
+#define DIODE_OFFSET            0.35       //forward voltage drop of the diode in the VBUS 
 
 //Logging Tag
 static const char* TAG = "ADC";
+
+
 
 
 // Initialize I2C
@@ -206,7 +209,7 @@ float get_battery_voltage(void)
 
     uint16_t batt_mv_cal = batt_v * BATT_DIVIDER; //account for the potential divider
 
-    float batt_v_cal = ((float)batt_mv_cal) / 1000.0; //convert to volts
+    float batt_v_cal = (((float)batt_mv_cal) / 1000.0) + DIODE_OFFSET; //convert to volts
 
     return batt_v_cal;
 
@@ -217,11 +220,12 @@ float get_battery_voltage(void)
 
 void ADCTask(void *pvParameter) 
 {
-    
+    ulTaskNotifyTake(pdTRUE, portMAX_DELAY); 
+
     uint16_t an;
     uint16_t cur;
     uint16_t res;
-    float batt;
+    
 
     while (1) {
 
@@ -231,12 +235,12 @@ void ADCTask(void *pvParameter)
         vTaskDelay(pdMS_TO_TICKS(50));
         res = read_res_inputs();
         vTaskDelay(pdMS_TO_TICKS(50));
-        batt = get_battery_voltage();
+        battery_volts = get_battery_voltage();
         vTaskDelay(pdMS_TO_TICKS(50));
 
         check_input_conditions(cur, an, res);
 
-        ESP_LOGI(TAG, "Analog: %d  Current: %d  Resist: %d   Batt:  %f",an, cur, res, batt); 
+        //ESP_LOGI(TAG, "Analog: %d  Current: %d  Resist: %d   Batt:  %.2f",an, cur, res, battery_volts); 
         vTaskDelay(pdMS_TO_TICKS(100));
 
        

@@ -15,6 +15,8 @@ extern "C" {
 #define SMS_SENDER_LEN 32
 #define SMS_MESSAGE_LEN 160
 
+extern float battery_volts;
+
 typedef enum {
     OUT_NONE = 0,
     OUT1,

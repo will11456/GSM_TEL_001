@@ -33,6 +33,20 @@
         "stdbool.h": "c",
         "event_groups.h": "c",
         "stdint.h": "c",
-        "stdio.h": "c"
+        "stdio.h": "c",
+        "format": "c",
+        "type_traits": "c",
+        "bitset": "c",
+        "streambuf": "c",
+        "system_error": "c",
+        "functional": "c",
+        "*.inc": "c",
+        "array": "c",
+        "charconv": "c",
+        "complex": "c",
+        "ratio": "c",
+        "tuple": "c",
+        "utility": "c",
+        "variant": "c"
     }
 }

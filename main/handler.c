@@ -353,7 +353,7 @@ static void parse_command(const sms_message_t *sms) {
     }
 
     if (strcasecmp(cmd, "BATTV") == 0) {
-        float v = get_battery_voltage(); // should be defined in adc/sensor module
+        float v = battery_volts; // should be defined in adc/sensor module
         snprintf(response, sizeof(response), "Battery: %.2f V", v);
         ESP_LOGI(TAG, "Battery voltage: %.2f V", v);
         send_reply(sms->sender, response);

@@ -19,10 +19,12 @@
 #include <ctype.h>
 
 #define UART_PORT UART_NUM_1
-#define UART_BUF_SIZE 2048
+#define UART_BUF_SIZE 256
 #define UART_BAUD_RATE 115200
 
 static const char *TAG = "MODEM";
+
+extern TaskHandle_t adcTaskHandle;
 
 typedef enum {
     MODEM_CMD_AT,
@@ -183,7 +185,9 @@ void ModemTask(void *param) {
     uart_flush_input(UART_PORT);
 
     vTaskDelay(pdMS_TO_TICKS(1000)); // Wait for the modem to stabilize
+    xTaskNotifyGive(adcTaskHandle);
     ESP_LOGW("MODEM", "Modem initialized");
+    
 
     while (1) {
         if (xQueueReceive(modem_cmd_queue, &req, 0)) {
@@ -222,17 +226,62 @@ void ModemTask(void *param) {
             }
 
             if (req->type == MODEM_CMD_SMS) {
-                char cmd[64];
-                snprintf(cmd, sizeof(cmd), "AT+CMGS=\"%s\"\r\n", req->sms.number);
+                char buf[256] = {0};
+                size_t offset = 0;
+
+                // 1. Ensure text mode
                 uart_write_bytes(UART_PORT, "AT+CMGF=1\r\n", 11);
                 vTaskDelay(pdMS_TO_TICKS(300));
                 uart_flush_input(UART_PORT);
+
+                // 2. Send AT+CMGS
+                char cmd[64];
+                snprintf(cmd, sizeof(cmd), "AT+CMGS=\"%s\"\r\n", req->sms.number);
                 uart_write_bytes(UART_PORT, cmd, strlen(cmd));
-                vTaskDelay(pdMS_TO_TICKS(500));
+
+                // 3. Wait for '>' prompt (modem ready for SMS text)
+                int got_prompt = 0;
+                for (int waited = 0; waited < 5000; waited += 100) {
+                    int len = uart_read_bytes(UART_PORT, buf, sizeof(buf) - 1, pdMS_TO_TICKS(100));
+                    if (len > 0 && memchr(buf, '>', len)) {
+                        got_prompt = 1;
+                        break;
+                    }
+                }
+                if (!got_prompt) {
+                    req->sms.success = false;
+                    xSemaphoreGive(req->sms.done);
+                    continue;
+                }
+
+                // 4. Send message + Ctrl+Z
                 uart_write_bytes(UART_PORT, req->sms.message, strlen(req->sms.message));
-                uart_write_bytes(UART_PORT, "\x1A", 1);
-                vTaskDelay(pdMS_TO_TICKS(10000));
-                req->sms.success = true;
+                uart_write_bytes(UART_PORT, "\x1A", 1);  // Ctrl+Z to send
+
+                // 5. Wait for OK/ERROR (up to ~10 seconds)
+                offset = 0;
+                int waited = 0;
+                req->sms.success = false;
+                memset(buf, 0, sizeof(buf));
+                while (waited < 12000 && offset < sizeof(buf) - 1) {
+                    int len = uart_read_bytes(UART_PORT, buf + offset, sizeof(buf) - 1 - offset, pdMS_TO_TICKS(100));
+                    if (len > 0) {
+                        offset += len;
+                        buf[offset] = '\0';
+                        ESP_LOGW(TAG, "buf: %s", buf);
+                        if (strstr((char*)buf, "OK")) {
+                            ESP_LOGW(TAG, "got OK");
+                            req->sms.success = true;
+                            break;
+                        }
+                        if (strstr((char*)buf, "ERROR")) {
+                            ESP_LOGE(TAG, "got ERROR");
+                            break;
+                        }
+                    }
+                    waited += 100;
+                }
+                vTaskDelay(pdMS_TO_TICKS(250));
                 xSemaphoreGive(req->sms.done);
             }
 
