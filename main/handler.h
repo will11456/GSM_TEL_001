@@ -47,6 +47,8 @@ typedef struct {
 void SmsHandlerTask(void *param);
 
 void check_input_conditions(float cur, float alg, float res);
+void send_reply(const char *to_number, const char *message);
+
 
 void restore_input_configs_from_flash(void);  // Load config for each input type from flash
 

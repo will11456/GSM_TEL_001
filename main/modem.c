@@ -187,8 +187,8 @@ void ModemTask(void *param) {
     vTaskDelay(pdMS_TO_TICKS(1000)); // Wait for the modem to stabilize
     xTaskNotifyGive(adcTaskHandle);
     ESP_LOGW("MODEM", "Modem initialized");
-    
 
+        
     while (1) {
         if (xQueueReceive(modem_cmd_queue, &req, 0)) {
             uart_flush_input(UART_PORT);
@@ -268,14 +268,14 @@ void ModemTask(void *param) {
                     if (len > 0) {
                         offset += len;
                         buf[offset] = '\0';
-                        ESP_LOGW(TAG, "buf: %s", buf);
+                        //ESP_LOGW(TAG, "buf: %s", buf);
                         if (strstr((char*)buf, "OK")) {
-                            ESP_LOGW(TAG, "got OK");
+                            //ESP_LOGW(TAG, "got OK");
                             req->sms.success = true;
                             break;
                         }
                         if (strstr((char*)buf, "ERROR")) {
-                            ESP_LOGE(TAG, "got ERROR");
+                            //ESP_LOGE(TAG, "got ERROR");
                             break;
                         }
                     }

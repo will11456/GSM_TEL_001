@@ -70,16 +70,21 @@ static bool should_trigger(float value, const input_monitor_config_t *cfg) {
 
 
 void check_input_conditions(float cur, float alg, float res) {
+
+    char reply[128];
+
     // CUR
     if (cur_config.type != THRESH_OFF && should_trigger(cur, &cur_config)) {
         if (!already_triggered_cur) {
             // 1. Send SMS to CUR log (use your log/number logic)
+
             char numbers[256];
-            ESP_LOGW(TAG, "CUR condition met: %f", cur);
+            ESP_LOGW(TAG, "CUR condition met: %.2f mA", cur/100.0);
             if (config_store_list_log("CUR", numbers, sizeof(numbers)) == ESP_OK && strlen(numbers) > 0) {
                 char *token = strtok(numbers, ",");
                 while (token) {
-                    modem_send_sms(token, "CUR condition met!");
+                    snprintf(reply, sizeof(reply), "Current Input Triggered: %.2f mA", cur/100.0);
+                    modem_send_sms(token, reply);
                     token = strtok(NULL, ",");
                 }
             }
@@ -406,6 +411,7 @@ static void parse_command(const sms_message_t *sms) {
 
 void SmsHandlerTask(void *param) {
     sms_message_t sms;
+    
     while (1) {
         if (xQueueReceive(rx_message_queue, &sms, portMAX_DELAY)) {
             ESP_LOGW("SMS", "Received SMS from %s: %s", sms.sender, sms.message);
