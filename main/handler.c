@@ -111,7 +111,8 @@ void check_input_conditions(float cur, float alg, float res) {
             if (config_store_list_log("ALG", numbers, sizeof(numbers)) == ESP_OK && strlen(numbers) > 0) {
                 char *token = strtok(numbers, ",");
                 while (token) {
-                    modem_send_sms(token, "ALG condition met!");
+                    snprintf(reply, sizeof(reply), "Analog Input Triggered: %.2f V", alg/1000.0);
+                    modem_send_sms(token, reply);
                     token = strtok(NULL, ",");
                 }
             }
@@ -137,7 +138,8 @@ void check_input_conditions(float cur, float alg, float res) {
             if (config_store_list_log("RES", numbers, sizeof(numbers)) == ESP_OK && strlen(numbers) > 0) {
                 char *token = strtok(numbers, ",");
                 while (token) {
-                    modem_send_sms(token, "RES condition met!");
+                    snprintf(reply, sizeof(reply), "Resistive Input Triggered: %.0f Ohm", res);
+                    modem_send_sms(token, reply);
                     token = strtok(NULL, ",");
                 }
             }

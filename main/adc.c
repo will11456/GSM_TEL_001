@@ -240,7 +240,7 @@ void ADCTask(void *pvParameter)
 
         check_input_conditions(cur, an, res);
 
-        //ESP_LOGI(TAG, "Analog: %d  Current: %d  Resist: %d   Batt:  %.2f",an, cur, res, battery_volts); 
+        ESP_LOGI(TAG, "Analog: %d  Current: %d  Resist: %d   Batt:  %.2f",an, cur, res, battery_volts); 
         vTaskDelay(pdMS_TO_TICKS(100));
 
        
