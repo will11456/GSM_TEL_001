@@ -18,8 +18,8 @@
 #define MODEM_RX GPIO_NUM_13
 
 //GPS UART
-#define GPS_TX GPIO_NUM_9
-#define GPS_RX GPIO_NUM_8
+#define GPS_TX GPIO_NUM_8
+#define GPS_RX GPIO_NUM_9
 
 
 //Modem Control

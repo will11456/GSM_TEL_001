@@ -32,7 +32,7 @@ float battery_volts;
 #define COUNT_TO_VOLTS_CAL      6.144      //Calibration constant for counts to volts in ADC
 #define ANALOG_INPUT_MULTIPLIER 2.5        // Conversion factor for ADC input to voltage
 #define RES_INPUT_MULTIPLIER    5.657
-#define BATT_DIVIDER            5.4
+#define BATT_DIVIDER            7.6
 #define DIODE_OFFSET            0.35       //forward voltage drop of the diode in the VBUS 
 
 //Logging Tag
@@ -235,12 +235,12 @@ void ADCTask(void *pvParameter)
         vTaskDelay(pdMS_TO_TICKS(50));
         res = read_res_inputs();
         vTaskDelay(pdMS_TO_TICKS(50));
-        battery_volts = get_battery_voltage();
+        battery_volts = get_battery_voltage(); 
         vTaskDelay(pdMS_TO_TICKS(50));
 
-        check_input_conditions(cur, an, res);
+        check_input_conditions(cur, an, res, battery_volts);
 
-        ESP_LOGI(TAG, "Analog: %d  Current: %d  Resist: %d   Batt:  %.2f",an, cur, res, battery_volts); 
+        //ESP_LOGI(TAG, "Analog: %d  Current: %d  Resist: %d   Batt:  %.2f",an, cur, res, battery_volts); 
         vTaskDelay(pdMS_TO_TICKS(100));
 
        

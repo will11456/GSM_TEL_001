@@ -25,6 +25,7 @@
 static const char *TAG = "MODEM";
 
 extern TaskHandle_t adcTaskHandle;
+extern TaskHandle_t inputTaskHandle;
 
 typedef enum {
     MODEM_CMD_AT,
@@ -185,8 +186,10 @@ void ModemTask(void *param) {
     uart_flush_input(UART_PORT);
 
     vTaskDelay(pdMS_TO_TICKS(1000)); // Wait for the modem to stabilize
-    xTaskNotifyGive(adcTaskHandle);
+
     ESP_LOGW("MODEM", "Modem initialized");
+    xTaskNotifyGive(adcTaskHandle);
+    xTaskNotifyGive(inputTaskHandle);
 
         
     while (1) {
@@ -359,18 +362,34 @@ bool modem_send_at_cmd(const char *cmd, char *response_buf, size_t buf_len) {
 
 
 bool modem_send_sms(const char *number, const char *message) {
+    // 1) Fetch Unit ID from NVS
+    char unit_id[32];
+    if (config_store_get_unit_id(unit_id, sizeof(unit_id)) != ESP_OK) {
+        // fallback
+        strncpy(unit_id, "Unit ID", sizeof(unit_id)-1);
+        unit_id[sizeof(unit_id)-1] = '\0';
+    }
+
+    // 2) Build the full text with ID header
+    //    assume req->sms.message is e.g. 160 or 512 bytes long
+    char full_msg[sizeof(((modem_command_t*)0)->sms.message)];
+    snprintf(full_msg, sizeof(full_msg), "%s: %s", unit_id, message);
+
+    // 3) Allocate the modem command
     modem_command_t *req = malloc(sizeof(modem_command_t));
     if (!req) return false;
 
     req->type = MODEM_CMD_SMS;
     req->sms.success = false;
 
+    // 4) Copy number and our full_msg
     strncpy(req->sms.number, number, sizeof(req->sms.number) - 1);
     req->sms.number[sizeof(req->sms.number) - 1] = '\0';
 
-    strncpy(req->sms.message, message, sizeof(req->sms.message) - 1);
+    strncpy(req->sms.message, full_msg, sizeof(req->sms.message) - 1);
     req->sms.message[sizeof(req->sms.message) - 1] = '\0';
 
+    // 5) Queue it and wait for done
     req->sms.done = xSemaphoreCreateBinary();
     if (!req->sms.done) {
         free(req);
@@ -390,7 +409,6 @@ bool modem_send_sms(const char *number, const char *message) {
     }
 
     bool success = req->sms.success;
-
     vSemaphoreDelete(req->sms.done);
     free(req);
     return success;

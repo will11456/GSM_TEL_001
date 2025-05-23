@@ -46,7 +46,7 @@ typedef struct {
 } input_monitor_config_t;
 void SmsHandlerTask(void *param);
 
-void check_input_conditions(float cur, float alg, float res);
+void check_input_conditions(float cur, float alg, float res, float battery_volts);
 void send_reply(const char *to_number, const char *message);
 
 

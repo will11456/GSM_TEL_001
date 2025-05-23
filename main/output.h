@@ -38,6 +38,9 @@ extern QueueHandle_t output_queue;
  *
  * @param cmd  Pointer to an output_cmd_t struct (id + desired level).
  */
+
+
+void output_controller_init(void);
 void output_controller_send(const output_cmd_t *cmd);
 void OutputTask(void *pvParameters);
 

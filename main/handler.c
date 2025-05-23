@@ -20,10 +20,12 @@ extern QueueHandle_t rx_message_queue;
 input_monitor_config_t cur_config;
 input_monitor_config_t alg_config;
 input_monitor_config_t res_config;
+static input_monitor_config_t valarm_config;
 
 static bool already_triggered_cur = false;
 static bool already_triggered_alg = false;
 static bool already_triggered_res = false;
+static bool already_triggered_valarm = false;
 
 void restore_input_configs_from_flash(void){
     if (config_store_load_cur_config(&cur_config) != ESP_OK) {
@@ -45,6 +47,13 @@ void restore_input_configs_from_flash(void){
         memset(&res_config, 0, sizeof(res_config));
         res_config.type = THRESH_OFF;
         config_store_save_res_config(&res_config);
+    }
+
+    // Load VALARM config
+    if (config_store_load_valarm_config(&valarm_config) != ESP_OK) {
+        memset(&valarm_config, 0, sizeof(valarm_config));
+        valarm_config.type = THRESH_OFF;
+        config_store_save_valarm_config(&valarm_config);
     }
 
 }
@@ -69,94 +78,119 @@ static bool should_trigger(float value, const input_monitor_config_t *cfg) {
 }
 
 
-void check_input_conditions(float cur, float alg, float res) {
-
+void check_input_conditions(float cur, float alg, float res, float battery_volts) {
     char reply[128];
+    char numbers[256];
 
-    // CUR
-    if (cur_config.type != THRESH_OFF && should_trigger(cur, &cur_config)) {
-        if (!already_triggered_cur) {
-            // 1. Send SMS to CUR log (use your log/number logic)
-
-            char numbers[256];
-            ESP_LOGW(TAG, "CUR condition met: %.2f mA", cur/100.0);
-            if (config_store_list_log("CUR", numbers, sizeof(numbers)) == ESP_OK && strlen(numbers) > 0) {
-                char *token = strtok(numbers, ",");
-                while (token) {
-                    snprintf(reply, sizeof(reply), "Current Input Triggered: %.2f mA", cur/100.0);
-                    modem_send_sms(token, reply);
-                    token = strtok(NULL, ",");
-                }
+    // ——— CUR (Current) ———
+    bool trigger_cur = (cur_config.type != THRESH_OFF) && should_trigger(cur, &cur_config);
+    if (trigger_cur && !already_triggered_cur) {
+        ESP_LOGW(TAG, "CUR condition met: %.2f mA", cur / 100.0);
+        if (config_store_list_log("CUR", numbers, sizeof(numbers)) == ESP_OK && *numbers) {
+            for (char *token = strtok(numbers, ","); token; token = strtok(NULL, ",")) {
+                snprintf(reply, sizeof(reply), "Current Input Triggered: %.2f mA", cur / 100.0);
+                modem_send_sms(token, reply);
             }
-            // 2. Activate output if needed
-            if (cur_config.output == OUT1) {
-                output_cmd_t o = { .id = OUTPUT_ID_1, .level = 1 };
-                output_controller_send(&o);
-            }
-            if (cur_config.output == OUT2) {
-                output_cmd_t o = { .id = OUTPUT_ID_2, .level = 1 };
-                output_controller_send(&o);
-            }
-            already_triggered_cur = true;
         }
-    } else {
+        if (cur_config.output == OUT1) {
+            output_controller_send(&(output_cmd_t){ .id = OUTPUT_ID_1, .level = 1 });
+        } else if (cur_config.output == OUT2) {
+            output_controller_send(&(output_cmd_t){ .id = OUTPUT_ID_2, .level = 1 });
+        }
+        already_triggered_cur = true;
+    }
+    else if (!trigger_cur && already_triggered_cur) {
+        // clear CUR output
+        if (cur_config.output == OUT1) {
+            output_controller_send(&(output_cmd_t){ .id = OUTPUT_ID_1, .level = 0 });
+        } else if (cur_config.output == OUT2) {
+            output_controller_send(&(output_cmd_t){ .id = OUTPUT_ID_2, .level = 0 });
+        }
         already_triggered_cur = false;
     }
 
-    // ALG
-    if (alg_config.type != THRESH_OFF && should_trigger(alg, &alg_config)) {
-        if (!already_triggered_alg) {
-            char numbers[256];
-            ESP_LOGW(TAG, "ALG condition met: %f", alg);
-            if (config_store_list_log("ALG", numbers, sizeof(numbers)) == ESP_OK && strlen(numbers) > 0) {
-                char *token = strtok(numbers, ",");
-                while (token) {
-                    snprintf(reply, sizeof(reply), "Analog Input Triggered: %.2f V", alg/1000.0);
-                    modem_send_sms(token, reply);
-                    token = strtok(NULL, ",");
-                }
+    // ——— ALG (Analog Voltage) ———
+    bool trigger_alg = (alg_config.type != THRESH_OFF) && should_trigger(alg, &alg_config);
+    if (trigger_alg && !already_triggered_alg) {
+        ESP_LOGW(TAG, "ALG condition met: %.2f V", alg / 1000.0);
+        if (config_store_list_log("ALG", numbers, sizeof(numbers)) == ESP_OK && *numbers) {
+            for (char *token = strtok(numbers, ","); token; token = strtok(NULL, ",")) {
+                snprintf(reply, sizeof(reply), "Analog Input Triggered: %.2f V", alg / 1000.0);
+                modem_send_sms(token, reply);
             }
-            if (cur_config.output == OUT1) {
-                output_cmd_t o = { .id = OUTPUT_ID_1, .level = 1 };
-                output_controller_send(&o);
-            }
-            if (cur_config.output == OUT2) {
-                output_cmd_t o = { .id = OUTPUT_ID_2, .level = 1 };
-                output_controller_send(&o);
-            }
-            already_triggered_alg = true;
         }
-    } else {
+        if (alg_config.output == OUT1) {
+            output_controller_send(&(output_cmd_t){ .id = OUTPUT_ID_1, .level = 1 });
+        } else if (alg_config.output == OUT2) {
+            output_controller_send(&(output_cmd_t){ .id = OUTPUT_ID_2, .level = 1 });
+        }
+        already_triggered_alg = true;
+    }
+    else if (!trigger_alg && already_triggered_alg) {
+        // clear ALG output
+        if (alg_config.output == OUT1) {
+            output_controller_send(&(output_cmd_t){ .id = OUTPUT_ID_1, .level = 0 });
+        } else if (alg_config.output == OUT2) {
+            output_controller_send(&(output_cmd_t){ .id = OUTPUT_ID_2, .level = 0 });
+        }
         already_triggered_alg = false;
     }
 
-    // RES
-    if (res_config.type != THRESH_OFF && should_trigger(res, &res_config)) {
-        if (!already_triggered_res) {
-            char numbers[256];
-            ESP_LOGW(TAG, "RES condition met: %f", res);
-            if (config_store_list_log("RES", numbers, sizeof(numbers)) == ESP_OK && strlen(numbers) > 0) {
-                char *token = strtok(numbers, ",");
-                while (token) {
-                    snprintf(reply, sizeof(reply), "Resistive Input Triggered: %.0f Ohm", res);
-                    modem_send_sms(token, reply);
-                    token = strtok(NULL, ",");
-                }
+    // ——— RES (Resistive) ———
+    bool trigger_res = (res_config.type != THRESH_OFF) && should_trigger(res, &res_config);
+    if (trigger_res && !already_triggered_res) {
+        ESP_LOGW(TAG, "RES condition met: %.0f Ohm", res);
+        if (config_store_list_log("RES", numbers, sizeof(numbers)) == ESP_OK && *numbers) {
+            for (char *token = strtok(numbers, ","); token; token = strtok(NULL, ",")) {
+                snprintf(reply, sizeof(reply), "Resistive Input Triggered: %.0f Ohm", res);
+                modem_send_sms(token, reply);
             }
-            if (cur_config.output == OUT1) {
-                output_cmd_t o = { .id = OUTPUT_ID_1, .level = 1 };
-                output_controller_send(&o);
-            }
-            if (cur_config.output == OUT2) {
-                output_cmd_t o = { .id = OUTPUT_ID_2, .level = 1 };
-                output_controller_send(&o);
-            }
-            already_triggered_res = true;
         }
-    } else {
+        if (res_config.output == OUT1) {
+            output_controller_send(&(output_cmd_t){ .id = OUTPUT_ID_1, .level = 1 });
+        } else if (res_config.output == OUT2) {
+            output_controller_send(&(output_cmd_t){ .id = OUTPUT_ID_2, .level = 1 });
+        }
+        already_triggered_res = true;
+    }
+    else if (!trigger_res && already_triggered_res) {
+        // clear RES output
+        if (res_config.output == OUT1) {
+            output_controller_send(&(output_cmd_t){ .id = OUTPUT_ID_1, .level = 0 });
+        } else if (res_config.output == OUT2) {
+            output_controller_send(&(output_cmd_t){ .id = OUTPUT_ID_2, .level = 0 });
+        }
         already_triggered_res = false;
     }
+
+    // ——— VALARM (Battery Voltage) ———
+    bool trigger_val = (valarm_config.type != THRESH_OFF) && should_trigger(battery_volts, &valarm_config);
+    if (trigger_val && !already_triggered_valarm) {
+        ESP_LOGW(TAG, "VALARM triggered: %.2f V", battery_volts);
+        if (config_store_list_log("VALARM", numbers, sizeof(numbers)) == ESP_OK && *numbers) {
+            for (char *token = strtok(numbers, ","); token; token = strtok(NULL, ",")) {
+                snprintf(reply, sizeof(reply), "Voltage Alarm Triggered: %.2f V", battery_volts);
+                modem_send_sms(token, reply);
+            }
+        }
+        if (valarm_config.output == OUT1) {
+            output_controller_send(&(output_cmd_t){ .id = OUTPUT_ID_1, .level = 1 });
+        } else if (valarm_config.output == OUT2) {
+            output_controller_send(&(output_cmd_t){ .id = OUTPUT_ID_2, .level = 1 });
+        }
+        already_triggered_valarm = true;
+    }
+    else if (!trigger_val && already_triggered_valarm) {
+        ESP_LOGI(TAG, "VALARM cleared: %.2f V", battery_volts);
+        if (valarm_config.output == OUT1) {
+            output_controller_send(&(output_cmd_t){ .id = OUTPUT_ID_1, .level = 0 });
+        } else if (valarm_config.output == OUT2) {
+            output_controller_send(&(output_cmd_t){ .id = OUTPUT_ID_2, .level = 0 });
+        }
+        already_triggered_valarm = false;
+    }
 }
+
 
 // Helper functions as described earlier
 
@@ -181,22 +215,14 @@ condition_t parse_condition(const char *s) {
     return COND_NONE;
 }
 
+
 void send_reply(const char *to_number, const char *message)
 {
-    char unit_id[32];
-    // Try to fetch the stored Unit ID; default to "Unit ID" on error
-    if (config_store_get_unit_id(unit_id, sizeof(unit_id)) != ESP_OK) {
-        strncpy(unit_id, "Unit ID", sizeof(unit_id)-1);
-        unit_id[sizeof(unit_id)-1] = '\0';
-    }
-    char buffer[512];
-    snprintf(buffer, sizeof(buffer), "%s: %s", unit_id, message);
-
     if (!to_number || !message) return;
-
-    modem_send_sms(to_number, buffer);
-    ESP_LOGI(TAG, "Reply sent to %s: %s", to_number, buffer);
+    modem_send_sms(to_number, message);
+    ESP_LOGI(TAG, "Reply sent to %s: %s", to_number, message);
 }
+
 
 static void trim(char *str) {
     // Trim leading
@@ -278,6 +304,40 @@ void handle_input_config(const char *input_type, const char *params, const char 
     send_reply(sender, reply);
 }
 
+static void handle_valarm_config(const char *params, const char *sender)
+{
+    char out_str[8]={0}, val_str[16]={0}, reply[128];
+    int n = sscanf(params, "%7s %15s", out_str, val_str);
+    if (n < 2) {
+        send_reply(sender, "Usage: VALARM <OUT1|OUT2|NONE> <VOLTAGE>");
+        return;
+    }
+
+    // parse output
+    valarm_config.output = parse_output(out_str);
+    if (valarm_config.output == OUT_NONE && strcasecmp(out_str,"NONE")!=0) {
+        snprintf(reply, sizeof(reply),
+                 "Invalid output '%s'. Use OUT1, OUT2 or NONE.", out_str);
+        send_reply(sender, reply);
+        return;
+    }
+
+    // configure as a simple UNDER limit
+    valarm_config.type  = THRESH_LIMIT;
+    valarm_config.cond  = COND_UNDER;
+    valarm_config.value1 = atof(val_str);
+    valarm_config.value2 = 0;
+
+    // persist
+    config_store_save_valarm_config(&valarm_config);
+
+    // ack
+    snprintf(reply, sizeof(reply),
+             "VALARM: %s if < %.2fV",
+             out_str, valarm_config.value1);
+    send_reply(sender, reply);
+}
+
 
 // ---- Main parser ----
 static void parse_command(const sms_message_t *sms) {
@@ -301,6 +361,12 @@ static void parse_command(const sms_message_t *sms) {
         send_reply(sms->sender, response);
         return;
     }
+    
+    // VALARM config (single‐threshold UNDER alarm)
+        if (strncasecmp(cmd, "VALARM ", 7) == 0) {
+            handle_valarm_config(cmd + 7, sms->sender);
+            return;
+        }
 
     if (strcasecmp(cmd, "SIGNAL") == 0) {
         int rssi = 0;
@@ -334,7 +400,7 @@ static void parse_command(const sms_message_t *sms) {
         if (config_store_list_log(arg1, list, sizeof(list)) == ESP_OK) {
             snprintf(response, sizeof(response), "%s log: %s", arg1, strlen(list) ? list : "(empty)");
         } else {
-            snprintf(response, sizeof(response), "Error reading %s log", arg1);
+            snprintf(response, sizeof(response), "%s log is empty", arg1);
         }
         send_reply(sms->sender, response);
         return;
@@ -406,6 +472,31 @@ static void parse_command(const sms_message_t *sms) {
         send_reply(sms->sender, response);
         return;
     }
+
+    if (sscanf(cmd, "IN1 %7s", arg1) == 1) {
+    output_action_t out = parse_output(arg1);
+    if (out == OUT_NONE && strcasecmp(arg1,"NONE")!=0) {
+        send_reply(sms->sender, "Usage: IN1 OUT1|OUT2|NONE");
+    } else {
+        config_store_set_input_output("IN1", out);
+        char buf[64];
+        snprintf(buf, sizeof(buf), "IN1 will drive %s", arg1);
+        send_reply(sms->sender, buf);
+    }
+    return;
+}
+if (sscanf(cmd, "IN2 %7s", arg1) == 1) {
+    output_action_t out = parse_output(arg1);
+    if (out == OUT_NONE && strcasecmp(arg1,"NONE")!=0) {
+        send_reply(sms->sender, "Usage: IN2 OUT1|OUT2|NONE");
+    } else {
+        config_store_set_input_output("IN2", out);
+        char buf[64];
+        snprintf(buf, sizeof(buf), "IN2 will drive %s", arg1);
+        send_reply(sms->sender, buf);
+    }
+    return;
+}
 
     // Any unknown or invalid command
     send_reply(sms->sender, "Unknown or invalid command");

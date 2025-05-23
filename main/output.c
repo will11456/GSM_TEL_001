@@ -22,9 +22,13 @@ static const gpio_num_t output_pins[] = {
     [OUTPUT_ID_2] = OUTPUT_2,
 };
 
+void output_controller_init(void) {
+    output_queue = xQueueCreate( 10, sizeof(output_cmd_t) );
+}
+
+
 void OutputTask(void *pvParameters)
 {   
-    output_queue = xQueueCreate(10, sizeof(output_cmd_t));         //create the output queue
     
     output_cmd_t cmd;
     // Configure all output pins:
@@ -46,9 +50,10 @@ void OutputTask(void *pvParameters)
     }
 }
 
-void output_controller_send(const output_cmd_t *cmd)
-{
+void output_controller_send(const output_cmd_t *cmd) {
     if (output_queue) {
-        xQueueSend(output_queue, cmd, 0);
+        xQueueSend(output_queue, cmd, portMAX_DELAY);
+    } else {
+        ESP_LOGE(TAG, "output_controller_send(): queue not initialized!");
     }
 }

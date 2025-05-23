@@ -9,7 +9,7 @@
 #include "adc.h"
 #include "modem.h"
 #include "handler.h"
-//#include "inputs.h"
+#include "inputs.h"
 #include "tmp102.h"
 #include "output.h"
 #include "config_store.h"
@@ -21,6 +21,8 @@ static const char* TAG = "MAIN";
 
 TaskHandle_t adcTaskHandle = NULL;
 TaskHandle_t modemTaskHandle = NULL;
+TaskHandle_t inputTaskHandle = NULL;
+
 
 
 void GPIOInit(void)
@@ -94,6 +96,9 @@ void app_main(void)
     //Initialize GPIO
     GPIOInit();
 
+    //Initialize Output Controller
+    output_controller_init();
+
     //initialize I2C
     i2c_master_init();
 
@@ -115,13 +120,13 @@ void app_main(void)
 
 
     //Start Tasks
-    xTaskCreate(OutputTask, "OutputTask", 2048, NULL, 5, NULL);
-    xTaskCreate(ADCTask, "read_ads1115_task", 2048*8, NULL, 10, &adcTaskHandle);
-    xTaskCreate(ModemTask, "modem_task", 2048*8, NULL, 11, NULL);
-    xTaskCreate(SmsHandlerTask, "SmsHandlerTask", 4096, NULL, 5, NULL);
-    //xTaskCreate(InputTask, "InputTask", 2048, NULL, 5, NULL);
-    xTaskCreate(tmp102_task, "tmp102_task", 2048, NULL, 5, NULL);
-    xTaskCreate(gps_task, "gps_task", 4096, NULL, 5, NULL);
+    xTaskCreate(OutputTask, "OutputTask", 2*2048, NULL, 6, NULL);
+    xTaskCreate(ADCTask, "read_ads1115_task", 2048*8, NULL, 3, &adcTaskHandle);
+    xTaskCreate(InputTask, "InputTask", 2048*2, NULL, 5, &inputTaskHandle);
+    xTaskCreate(ModemTask, "modem_task", 2048*8, NULL, 1, NULL);
+    xTaskCreate(SmsHandlerTask, "SmsHandlerTask", 4096, NULL, 2, NULL);
+    xTaskCreate(tmp102_task, "tmp102_task", 2048, NULL, 10, NULL);
+    xTaskCreate(gps_task, "gps_task", 4096, NULL, 7, NULL);
 
 
 

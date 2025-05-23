@@ -24,6 +24,9 @@
 #define KEY_CURCFG      "curcfg"
 #define KEY_ALGCFG      "algcfg"
 #define KEY_RESCFG      "rescfg"
+// IN->OUT mapping keys
+#define KEY_IN1OUT      "in1_out"
+#define KEY_IN2OUT      "in2_out"
 
 // === String Save/Load Helpers ===
 static esp_err_t save_string(const char *key, const char *value) {
@@ -75,7 +78,6 @@ void config_store_init(void) {
         err = nvs_flash_init();
     }
     ESP_ERROR_CHECK(err);
-
     vTaskDelay(1000 / portTICK_PERIOD_MS);
 }
 
@@ -91,12 +93,17 @@ esp_err_t config_store_reset_defaults(void) {
     }
     nvs_close(handle);
 
-    // Set default configs for CUR/ALG/RES to OFF, no output.
+    // Set default configs for CUR/ALG/RES and VALARM to OFF
     input_monitor_config_t def = {0};
     def.type = THRESH_OFF;
     save_blob(KEY_CURCFG, &def, sizeof(def));
     save_blob(KEY_ALGCFG, &def, sizeof(def));
     save_blob(KEY_RESCFG, &def, sizeof(def));
+    save_blob(KEY_VALARM, &def, sizeof(def));
+
+    // Default IN1/IN2->NONE
+    config_store_set_input_output("IN1", OUT_NONE);
+    config_store_set_input_output("IN2", OUT_NONE);
 
     return err;
 }
@@ -120,7 +127,7 @@ esp_err_t config_store_add_number(const char *log_name, const char *number) {
         log_buffer[0] = '\0';
     }
     if (strstr(log_buffer, number)) {
-        return ESP_OK; // already present
+        return ESP_OK;
     }
     if (strlen(log_buffer) + strlen(number) + 2 >= sizeof(log_buffer)) {
         return ESP_ERR_NO_MEM;
@@ -134,10 +141,10 @@ esp_err_t config_store_remove_number(const char *log_name, const char *number) {
     snprintf(log_key, sizeof(log_key), "log_%s", log_name);
     if (load_string(log_key, log_buffer, sizeof(log_buffer)) != ESP_OK) return ESP_FAIL;
     char *start = strstr(log_buffer, number);
-    if (!start) return ESP_OK; // not found
+    if (!start) return ESP_OK;
     char *end = start + strlen(number);
-    if (*end == ',') end++; // skip comma
-    else if (start != log_buffer) start--; // remove comma before
+    if (*end == ',') end++;
+    else if (start != log_buffer) start--;
     memmove(start, end, strlen(end) + 1);
     return save_string(log_key, log_buffer);
 }
@@ -152,7 +159,7 @@ esp_err_t config_store_list_log(const char *log_name, char *out_buf, size_t max_
     return load_string(log_key, out_buf, max_len);
 }
 
-// === CUR/ALG/RES persistent config ===
+// === CUR/ALG/RES/VALARM persistent config ===
 esp_err_t config_store_save_cur_config(const input_monitor_config_t *cfg) {
     return save_blob(KEY_CURCFG, cfg, sizeof(*cfg));
 }
@@ -162,6 +169,10 @@ esp_err_t config_store_save_alg_config(const input_monitor_config_t *cfg) {
 esp_err_t config_store_save_res_config(const input_monitor_config_t *cfg) {
     return save_blob(KEY_RESCFG, cfg, sizeof(*cfg));
 }
+esp_err_t config_store_save_valarm_config(const input_monitor_config_t *cfg) {
+    return save_blob(KEY_VALARM, cfg, sizeof(*cfg));
+}
+
 esp_err_t config_store_load_cur_config(input_monitor_config_t *cfg) {
     size_t len = sizeof(*cfg);
     return load_blob(KEY_CURCFG, cfg, len);
@@ -174,15 +185,36 @@ esp_err_t config_store_load_res_config(input_monitor_config_t *cfg) {
     size_t len = sizeof(*cfg);
     return load_blob(KEY_RESCFG, cfg, len);
 }
-
-// === VOLTAGE ALARM ===
-esp_err_t config_store_set_voltage_alarm(const voltage_alarm_config_t *cfg) {
-    snprintf(log_buffer, sizeof(log_buffer), "%d,%s", cfg->threshold_mv, cfg->output);
-    return save_string(KEY_VALARM, log_buffer);
+esp_err_t config_store_load_valarm_config(input_monitor_config_t *cfg) {
+    size_t len = sizeof(*cfg);
+    return load_blob(KEY_VALARM, cfg, len);
 }
 
-esp_err_t config_store_get_voltage_alarm(voltage_alarm_config_t *out) {
-    if (load_string(KEY_VALARM, log_buffer, sizeof(log_buffer)) != ESP_OK) return ESP_FAIL;
-    sscanf(log_buffer, "%d,%7s", &out->threshold_mv, out->output);
-    return ESP_OK;
+// === IN1/IN2 -> OUTPUT mapping ===
+esp_err_t config_store_set_input_output(const char *input, output_action_t out) {
+    const char *key = (strcmp(input, "IN1") == 0 ? KEY_IN1OUT : KEY_IN2OUT);
+    nvs_handle_t h;
+    esp_err_t err = nvs_open(NVS_NAMESPACE, NVS_READWRITE, &h);
+    if (err != ESP_OK) return err;
+    err = nvs_set_u8(h, key, (uint8_t)out);
+    if (err == ESP_OK) err = nvs_commit(h);
+    nvs_close(h);
+    return err;
 }
+
+esp_err_t config_store_get_input_output(const char *input, output_action_t *out) {
+    const char *key = (strcmp(input, "IN1") == 0 ? KEY_IN1OUT : KEY_IN2OUT);
+    nvs_handle_t h;
+    esp_err_t err = nvs_open(NVS_NAMESPACE, NVS_READONLY, &h);
+    if (err != ESP_OK) return err;
+    uint8_t v;
+    err = nvs_get_u8(h, key, &v);
+    nvs_close(h);
+    if (err == ESP_ERR_NVS_NOT_FOUND) {
+        *out = OUT_NONE;
+        return ESP_OK;
+    }
+    *out = (output_action_t)v;
+    return err;
+}
+

@@ -69,7 +69,7 @@ static void parse_gga(const char *sentence) {
     static bool has_logged_fix = false;
 
     if (gps_has_lock() == 1 && !has_logged_fix) {
-        ESP_LOGI("GPS", "📡 GPS fix acquired!");
+        ESP_LOGW("GPS", "📡 GPS fix acquired!");
         has_logged_fix = true;
     }
 
@@ -96,6 +96,45 @@ static void parse_rmc(const char *sentence) {
 }
 
 
+static void parse_gll(const char *sentence) {
+    char *tokens[8] = {0};
+    char *buf = strdup(sentence);
+    char *token = strtok(buf, ",");
+    int i = 0;
+
+    while (token && i < 8) {
+        tokens[i++] = token;
+        token = strtok(NULL, ",");
+    }
+
+    // GLL format: $GPGLL,lat,N,lon,E,time,status,posMode*CS
+    // Example:    $GPGLL,4916.45,N,12311.12,W,225444,A,A*58
+
+    if (i >= 7 && tokens[6] && tokens[6][0] == 'A') {
+        if (gps_mutex && xSemaphoreTake(gps_mutex, pdMS_TO_TICKS(10))) {
+            gps_data.latitude = nmea_to_decimal(tokens[1], tokens[2]);
+            gps_data.longitude = nmea_to_decimal(tokens[3], tokens[4]);
+            gps_data.time = atof(tokens[5]);
+            gps_has_fix = true;
+            xSemaphoreGive(gps_mutex);
+        }
+    } else {
+        if (gps_mutex && xSemaphoreTake(gps_mutex, pdMS_TO_TICKS(10))) {
+            gps_has_fix = false;
+            xSemaphoreGive(gps_mutex);
+        }
+    }
+
+    // Optional: Fix notification
+    static bool has_logged_fix = false;
+    if (gps_has_lock() == 1 && !has_logged_fix) {
+        ESP_LOGW("GPS", "📡 GPS fix acquired (via GLL)!");
+        has_logged_fix = true;
+    }
+
+    free(buf);
+}
+
 
 void gps_task(void *arg) {
     uint8_t *uart_buf = malloc(GPS_UART_BUF_SIZE + 1);  // +1 for null-termination
@@ -110,31 +149,31 @@ void gps_task(void *arg) {
 
     while (1) {
         int len = uart_read_bytes(GPS_UART_NUM, uart_buf, GPS_UART_BUF_SIZE, pdMS_TO_TICKS(1000));
-
         if (len > 0) {
             for (int i = 0; i < len; ++i) {
                 char c = (char)uart_buf[i];
 
                 if (c == '\n') {
                     line_buf[line_pos] = '\0';  // Null-terminate
-                    if (line_pos > 6 && strncmp(line_buf, "$GP", 3) == 0) {
-                        //ESP_LOGI(TAG, "NMEA: %s", line_buf);
+                    //ESP_LOGI(TAG, "NMEA: %s", line_buf);
 
-                        if (strncmp(line_buf, "$GPGGA", 6) == 0) {
+                    // Parse if sentence starts with $GP or $GN
+                    if (line_pos > 6 && (strncmp(line_buf, "$GP", 3) == 0 || strncmp(line_buf, "$GN", 3) == 0)) {
+                        if (strncmp(line_buf + 3, "GGA", 3) == 0) {
                             parse_gga(line_buf);
-                            //ESP_LOGW(TAG, "GPS GGA: %s", line_buf);
-                        } else if (strncmp(line_buf, "$GPRMC", 6) == 0) {
+                            //ESP_LOGW(TAG, "FOUND: %s", line_buf);
+                        } else if (strncmp(line_buf + 3, "RMC", 3) == 0) {
                             parse_rmc(line_buf);
-                            //ESP_LOGW(TAG, "GPS RMC: %s", line_buf);
+                        } else if (strncmp(line_buf + 3, "GLL", 3) == 0) {
+                            parse_gll(line_buf);
                         }
                     }
+
                     line_pos = 0;
                     memset(line_buf, 0, sizeof(line_buf));
-                }
-                else if (isprint((unsigned char)c) && line_pos < LINE_BUF_SIZE - 1) {
+                } else if (isprint((unsigned char)c) && line_pos < LINE_BUF_SIZE - 1) {
                     line_buf[line_pos++] = c;
                 }
-                // else: ignore non-printable characters, overflows, or carriage returns
             }
         }
     }
@@ -142,6 +181,7 @@ void gps_task(void *arg) {
     free(uart_buf);
     vTaskDelete(NULL);
 }
+
 
 
 void gps_init(void) {
@@ -183,13 +223,13 @@ void report_gps_status(void) {
     gps_data_t data = gps_get_data();
 
     if (gps_has_lock()) {
-        ESP_LOGI("GPS", "Fix acquired. Lat: %.6f, Lon: %.6f, Alt: %.2f, Sats: %d, HDOP: %.2f",
+        ESP_LOGW("GPS", "Fix acquired. Lat: %.6f, Lon: %.6f, Alt: %.2f, Sats: %d, HDOP: %.2f",
                 data.latitude, data.longitude, data.altitude, data.satellites_used, data.hdop);
                  
     } 
             
     else {
-        ESP_LOGI(TAG, "No GPS fix. Waiting for signal...");
+        ESP_LOGW(TAG, "No GPS fix. Waiting for signal...");
         
     }
 }
