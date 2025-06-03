@@ -474,29 +474,50 @@ static void parse_command(const sms_message_t *sms) {
     }
 
     if (sscanf(cmd, "IN1 %7s", arg1) == 1) {
-    output_action_t out = parse_output(arg1);
-    if (out == OUT_NONE && strcasecmp(arg1,"NONE")!=0) {
-        send_reply(sms->sender, "Usage: IN1 OUT1|OUT2|NONE");
-    } else {
-        config_store_set_input_output("IN1", out);
-        char buf[64];
-        snprintf(buf, sizeof(buf), "IN1 will drive %s", arg1);
-        send_reply(sms->sender, buf);
+        output_action_t out = parse_output(arg1);
+            if (out == OUT_NONE && strcasecmp(arg1,"NONE")!=0) {
+                send_reply(sms->sender, "Usage: IN1 OUT1|OUT2|NONE");
+            } 
+            else {
+                config_store_set_input_output("IN1", out);
+                char buf[64];
+                snprintf(buf, sizeof(buf), "IN1 will drive %s", arg1);
+                send_reply(sms->sender, buf);
+            }
+            return;
     }
+
+    if (sscanf(cmd, "IN2 %7s", arg1) == 1) {
+        output_action_t out = parse_output(arg1);
+        if (out == OUT_NONE && strcasecmp(arg1,"NONE")!=0) {
+            send_reply(sms->sender, "Usage: IN2 OUT1|OUT2|NONE");
+        } else {
+            config_store_set_input_output("IN2", out);
+            char buf[64];
+            snprintf(buf, sizeof(buf), "IN2 will drive %s", arg1);
+            send_reply(sms->sender, buf);
+        }
+        return;
+    }
+
+if (sscanf(cmd, "WRITESERIAL%31s", arg1) == 1) {
+    config_store_set_serial(arg1);
+    snprintf(response, sizeof(response), "Serial number set to %s", arg1);
+    send_reply(sms->sender, response);
     return;
 }
-if (sscanf(cmd, "IN2 %7s", arg1) == 1) {
-    output_action_t out = parse_output(arg1);
-    if (out == OUT_NONE && strcasecmp(arg1,"NONE")!=0) {
-        send_reply(sms->sender, "Usage: IN2 OUT1|OUT2|NONE");
+
+if (strcasecmp(cmd, "READSERIAL") == 0) {
+    char serial[32] = {0};
+    if (config_store_get_serial(serial, sizeof(serial)) == ESP_OK && strlen(serial) > 0) {
+        snprintf(response, sizeof(response), "Serial number: %s", serial);
     } else {
-        config_store_set_input_output("IN2", out);
-        char buf[64];
-        snprintf(buf, sizeof(buf), "IN2 will drive %s", arg1);
-        send_reply(sms->sender, buf);
+        snprintf(response, sizeof(response), "Serial number not set");
     }
+    send_reply(sms->sender, response);
     return;
 }
+
 
     // Any unknown or invalid command
     send_reply(sms->sender, "Unknown or invalid command");

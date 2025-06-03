@@ -28,6 +28,12 @@
 #define KEY_IN1OUT      "in1_out"
 #define KEY_IN2OUT      "in2_out"
 
+//Serial Number
+#define KEY_SERIAL      "serial"
+
+
+
+
 // === String Save/Load Helpers ===
 static esp_err_t save_string(const char *key, const char *value) {
     nvs_handle_t handle;
@@ -218,3 +224,11 @@ esp_err_t config_store_get_input_output(const char *input, output_action_t *out)
     return err;
 }
 
+
+esp_err_t config_store_get_serial(char *out_serial, size_t max_len) {
+    return load_string(KEY_SERIAL, out_serial, max_len);
+}
+
+esp_err_t config_store_set_serial(const char *serial) {
+    return save_string(KEY_SERIAL, serial);
+}

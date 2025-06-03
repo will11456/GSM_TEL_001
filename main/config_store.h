@@ -36,6 +36,11 @@ esp_err_t config_store_load_alg_config(input_monitor_config_t *cfg);
 esp_err_t config_store_load_res_config(input_monitor_config_t *cfg);
 esp_err_t config_store_load_valarm_config(valarm_config_t *cfg);
 
+// Serial number management
+esp_err_t config_store_set_serial(const char *serial);
+esp_err_t config_store_get_serial(char *out_serial, size_t max_len);
+
+
 
 
 
