@@ -45,7 +45,7 @@ typedef struct {
         } at;
         struct {
             char number[32];
-            char message[160];
+            char message[256];
             SemaphoreHandle_t done;
             bool success;
         } sms;
@@ -166,6 +166,8 @@ bool signal_quality(int *rssi_out, char *rating_buf, size_t buf_len)
 
 
 void ModemTask(void *param) {
+
+    
 
     modem_command_t *req = NULL;
     uint8_t buf[512];
@@ -377,6 +379,11 @@ bool modem_send_sms(const char *number, const char *message) {
 
     // 3) Allocate the modem command
     modem_command_t *req = malloc(sizeof(modem_command_t));
+
+    if (req == NULL) {
+    ESP_LOGE("QUEUE", "Attempted to queue a NULL pointer!");
+    }
+
     if (!req) return false;
 
     req->type = MODEM_CMD_SMS;
@@ -394,6 +401,12 @@ bool modem_send_sms(const char *number, const char *message) {
     if (!req->sms.done) {
         free(req);
         return false;
+    }
+
+    //check
+    if (!modem_cmd_queue) {
+        ESP_LOGE("MODEM", "SMS queue not initialized, can't send!");
+        
     }
 
     if (!xQueueSend(modem_cmd_queue, &req, pdMS_TO_TICKS(100))) {

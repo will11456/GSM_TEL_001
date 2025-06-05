@@ -192,10 +192,12 @@ void check_digital_inputs(void)
 void InputTask(void *pvParameter)
 {
 
-    ulTaskNotifyTake(pdTRUE, portMAX_DELAY); 
+    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+    ESP_LOGW(TAG, "Input Task Started"); 
 
     // Single init, buffers now static so no per-call stack hit
 
+    vTaskDelay(pdMS_TO_TICKS(5000)); 
 
     digital_inputs_init();
     ESP_LOGW(TAG, "Digital Inputs Initialized");

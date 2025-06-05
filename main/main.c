@@ -121,10 +121,11 @@ void app_main(void)
 
     //Start Tasks
     xTaskCreate(OutputTask, "OutputTask", 2*2048, NULL, 6, NULL);
-    xTaskCreate(ADCTask, "read_ads1115_task", 2048*8, NULL, 3, &adcTaskHandle);
-    xTaskCreate(InputTask, "InputTask", 2048*2, NULL, 5, &inputTaskHandle);
     xTaskCreate(ModemTask, "modem_task", 2048*8, NULL, 1, NULL);
-    xTaskCreate(SmsHandlerTask, "SmsHandlerTask", 4096, NULL, 2, NULL);
+    xTaskCreate(ADCTask, "read_ads1115_task", 2048*8, NULL, 3, &adcTaskHandle);
+    xTaskCreate(InputTask, "InputTask", 2048*2, NULL, 2, &inputTaskHandle);
+    
+    xTaskCreate(SmsHandlerTask, "SmsHandlerTask", 4096, NULL, 3, NULL);
     xTaskCreate(tmp102_task, "tmp102_task", 2048, NULL, 10, NULL);
     xTaskCreate(gps_task, "gps_task", 4096, NULL, 7, NULL);
 
