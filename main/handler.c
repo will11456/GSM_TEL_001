@@ -58,6 +58,16 @@ void restore_input_configs_from_flash(void){
 
 }
 
+//Input naming helper function
+void get_input_display(const char *input, char *buf, size_t bufsize) {
+    char name[32] = {0};
+    if (config_store_get_input_name(input, name, sizeof(name)) == ESP_OK && strlen(name)) {
+        snprintf(buf, bufsize, "%s [%s]", input, name);
+    } else {
+        snprintf(buf, bufsize, "%s", input);
+    }
+}
+
 // Utility function
 static bool should_trigger(float value, const input_monitor_config_t *cfg) {
     switch(cfg->type) {
@@ -88,7 +98,9 @@ void check_input_conditions(float cur, float alg, float res, float battery_volts
         ESP_LOGW(TAG, "CUR condition met: %.2f mA", cur / 100.0);
         if (config_store_list_log("CUR", numbers, sizeof(numbers)) == ESP_OK && *numbers) {
             for (char *token = strtok(numbers, ","); token; token = strtok(NULL, ",")) {
-                snprintf(reply, sizeof(reply), "Current Input Triggered: %.2f mA", cur / 100.0);
+                char input_disp[48];
+                get_input_display("CUR", input_disp, sizeof(input_disp));
+                snprintf(reply, sizeof(reply), "ALERT: %s Triggered! Value: %.2f mA", input_disp, cur / 100.0);
                 modem_send_sms(token, reply);
             }
         }
@@ -115,7 +127,9 @@ void check_input_conditions(float cur, float alg, float res, float battery_volts
         ESP_LOGW(TAG, "ALG condition met: %.2f V", alg / 1000.0);
         if (config_store_list_log("ALG", numbers, sizeof(numbers)) == ESP_OK && *numbers) {
             for (char *token = strtok(numbers, ","); token; token = strtok(NULL, ",")) {
-                snprintf(reply, sizeof(reply), "Analog Input Triggered: %.2f V", alg / 1000.0);
+                char input_disp[48];
+                get_input_display("ALG", input_disp, sizeof(input_disp));
+                snprintf(reply, sizeof(reply), "ALERT: %s Triggered! Value: %.2f V", input_disp, alg / 1000.0);
                 modem_send_sms(token, reply);
             }
         }
@@ -142,7 +156,9 @@ void check_input_conditions(float cur, float alg, float res, float battery_volts
         ESP_LOGW(TAG, "RES condition met: %.0f Ohm", res);
         if (config_store_list_log("RES", numbers, sizeof(numbers)) == ESP_OK && *numbers) {
             for (char *token = strtok(numbers, ","); token; token = strtok(NULL, ",")) {
-                snprintf(reply, sizeof(reply), "Resistive Input Triggered: %.0f Ohm", res);
+                char input_disp[48];
+                get_input_display("RES", input_disp, sizeof(input_disp));
+                snprintf(reply, sizeof(reply), "ALERT: %s Triggered! Value: %.0f Ohm", input_disp, res);
                 modem_send_sms(token, reply);
             }
         }
@@ -480,8 +496,10 @@ static void parse_command(const sms_message_t *sms) {
             } 
             else {
                 config_store_set_input_output("IN1", out);
-                char buf[64];
-                snprintf(buf, sizeof(buf), "IN1 will drive %s", arg1);
+                char buf[128];
+                char input_disp[48];
+                get_input_display("IN1", input_disp, sizeof(input_disp));               
+                snprintf(buf, sizeof(buf), "%s will drive %s", input_disp, arg1);
                 send_reply(sms->sender, buf);
             }
             return;
@@ -493,8 +511,10 @@ static void parse_command(const sms_message_t *sms) {
             send_reply(sms->sender, "Usage: IN2 OUT1|OUT2|NONE");
         } else {
             config_store_set_input_output("IN2", out);
-            char buf[64];
-            snprintf(buf, sizeof(buf), "IN2 will drive %s", arg1);
+            char buf[128];
+            char input_disp[48];
+            get_input_display("IN2", input_disp, sizeof(input_disp));
+            snprintf(buf, sizeof(buf), "%s will drive %s", input_disp, arg1);
             send_reply(sms->sender, buf);
         }
         return;
@@ -517,6 +537,17 @@ if (strcasecmp(cmd, "READSERIAL") == 0) {
     send_reply(sms->sender, response);
     return;
 }
+
+if (sscanf(cmd, "NAME %31s %31[^\n]", arg1, arg2) == 2) {
+    if (config_store_set_input_name(arg1, arg2) == ESP_OK) {
+        snprintf(response, sizeof(response), "%s name set to %s", arg1, arg2);
+    } else {
+        snprintf(response, sizeof(response), "Invalid input for NAME: %s", arg1);
+    }
+    send_reply(sms->sender, response);
+    return;
+}
+
 
 
     // Any unknown or invalid command

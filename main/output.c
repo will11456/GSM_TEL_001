@@ -23,7 +23,7 @@ static const gpio_num_t output_pins[] = {
 };
 
 void output_controller_init(void) {
-    output_queue = xQueueCreate( 10, sizeof(output_cmd_t) );
+    output_queue = xQueueCreate( 10, sizeof(output_cmd_t));
 }
 
 

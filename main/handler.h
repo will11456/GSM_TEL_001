@@ -51,7 +51,7 @@ void send_reply(const char *to_number, const char *message);
 
 
 void restore_input_configs_from_flash(void);  // Load config for each input type from flash
-
+void get_input_display(const char *input, char *buf, size_t bufsize);
 
 #ifdef __cplusplus
 }

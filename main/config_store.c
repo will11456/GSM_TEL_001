@@ -32,6 +32,14 @@
 #define KEY_SERIAL      "serial"
 
 
+//Input Names
+#define KEY_NAME_IN1  "name_in1"
+#define KEY_NAME_IN2  "name_in2"
+#define KEY_NAME_CUR  "name_cur"
+#define KEY_NAME_ALG  "name_alg"
+#define KEY_NAME_RES  "name_res"
+
+
 
 
 // === String Save/Load Helpers ===
@@ -225,6 +233,8 @@ esp_err_t config_store_get_input_output(const char *input, output_action_t *out)
 }
 
 
+
+//Serial Number Management
 esp_err_t config_store_get_serial(char *out_serial, size_t max_len) {
     return load_string(KEY_SERIAL, out_serial, max_len);
 }
@@ -232,3 +242,32 @@ esp_err_t config_store_get_serial(char *out_serial, size_t max_len) {
 esp_err_t config_store_set_serial(const char *serial) {
     return save_string(KEY_SERIAL, serial);
 }
+
+
+
+
+
+// === Input Names ===
+
+static const char* name_key_for(const char* input) {
+    if (strcasecmp(input, "IN1") == 0) return KEY_NAME_IN1;
+    if (strcasecmp(input, "IN2") == 0) return KEY_NAME_IN2;
+    if (strcasecmp(input, "CUR") == 0) return KEY_NAME_CUR;
+    if (strcasecmp(input, "ALG") == 0) return KEY_NAME_ALG;
+    if (strcasecmp(input, "RES") == 0) return KEY_NAME_RES;
+    return NULL;
+}
+
+esp_err_t config_store_set_input_name(const char *input, const char *name) {
+    const char *key = name_key_for(input);
+    if (!key) return ESP_ERR_INVALID_ARG;
+    return save_string(key, name);
+}
+
+esp_err_t config_store_get_input_name(const char *input, char *out, size_t len) {
+    const char *key = name_key_for(input);
+    if (!key) return ESP_ERR_INVALID_ARG;
+    return load_string(key, out, len);
+}
+
+

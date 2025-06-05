@@ -25,7 +25,7 @@ static output_action_t prev_in2_out_cfg;
 
 // static buffers for SMS and logs
 static char numbers_buf[256];
-static char msg_buf[64];
+static char msg_buf[128];
 
 /**
  * Configure IN1/IN2 as inputs, latch initial states and mappings,
@@ -59,7 +59,6 @@ void digital_inputs_init(void)
 
     // for each input active on boot: drive output and send SMS
     if (prev_in1) {
-        ESP_LOGI(TAG, "Input 1 Activated");
         // drive configured output
         if (in1_out_cfg == OUT1) {
             output_controller_send(&(output_cmd_t){ .id = OUTPUT_ID_1, .level = 1 });
@@ -69,21 +68,28 @@ void digital_inputs_init(void)
         // send SMS using same format as edge
         if (config_store_list_log("IN1", numbers_buf, sizeof(numbers_buf)) == ESP_OK && *numbers_buf) {
             for (char *tok = strtok(numbers_buf, ","); tok; tok = strtok(NULL, ",")) {
-                snprintf(msg_buf, sizeof(msg_buf), "Input 1 Activated");
+                char input_disp[48];
+                get_input_display("IN1", input_disp, sizeof(input_disp));
+                snprintf(msg_buf, sizeof(msg_buf), "%s Activated", input_disp);
+                ESP_LOGI(TAG, "%s Activated", input_disp);
                 modem_send_sms(tok, msg_buf);
             }
         }
     }
+
+    // do the same for IN2
     if (prev_in2) {
-        ESP_LOGI(TAG, "Input 2 Activated");
-        if (in2_out_cfg == OUT1) {
+                if (in2_out_cfg == OUT1) {
             output_controller_send(&(output_cmd_t){ .id = OUTPUT_ID_1, .level = 1 });
         } else if (in2_out_cfg == OUT2) {
             output_controller_send(&(output_cmd_t){ .id = OUTPUT_ID_2, .level = 1 });
         }
         if (config_store_list_log("IN2", numbers_buf, sizeof(numbers_buf)) == ESP_OK && *numbers_buf) {
             for (char *tok = strtok(numbers_buf, ","); tok; tok = strtok(NULL, ",")) {
-                snprintf(msg_buf, sizeof(msg_buf), "Input 2 Activated");
+                char input_disp[48];
+                get_input_display("IN2", input_disp, sizeof(input_disp));
+                snprintf(msg_buf, sizeof(msg_buf), "%s Activated", input_disp);
+                ESP_LOGI(TAG, "%s Activated", input_disp);
                 modem_send_sms(tok, msg_buf);
             }
         }
@@ -144,10 +150,13 @@ void check_digital_inputs(void)
 
     // IN1: edge detection
     if (cur1 != prev_in1) {
-        ESP_LOGI(TAG, "Input 1 %s", cur1 ? "Activated" : "Deactivated");
         if (config_store_list_log("IN1", numbers_buf, sizeof(numbers_buf)) == ESP_OK && *numbers_buf) {
             for (char *tok = strtok(numbers_buf, ","); tok; tok = strtok(NULL, ",")) {
-                snprintf(msg_buf, sizeof(msg_buf), "Input 1 %s", cur1 ? "Activated" : "Deactivated");
+                char input_disp[48];
+                get_input_display("IN1", input_disp, sizeof(input_disp));
+                snprintf(msg_buf, sizeof(msg_buf), "%s %s", input_disp, cur1 ? "Activated" : "Deactivated");
+                ESP_LOGI(TAG, "%s %s", input_disp, cur1 ? "Activated" : "Deactivated");
+
                 modem_send_sms(tok, msg_buf);
             }
         }
@@ -162,10 +171,12 @@ void check_digital_inputs(void)
 
     // IN2: edge detection
     if (cur2 != prev_in2) {
-        ESP_LOGI(TAG, "Input 2 %s", cur2 ? "Activated" : "Deactivated");
         if (config_store_list_log("IN2", numbers_buf, sizeof(numbers_buf)) == ESP_OK && *numbers_buf) {
             for (char *tok = strtok(numbers_buf, ","); tok; tok = strtok(NULL, ",")) {
-                snprintf(msg_buf, sizeof(msg_buf), "Input 2 %s", cur2 ? "Activated" : "Deactivated");
+                char input_disp[48];
+                get_input_display("IN2", input_disp, sizeof(input_disp));
+                snprintf(msg_buf, sizeof(msg_buf), "%s %s", input_disp, cur2 ? "Activated" : "Deactivated");
+                ESP_LOGI(TAG, "%s %s", input_disp, cur2 ? "Activated" : "Deactivated");
                 modem_send_sms(tok, msg_buf);
             }
         }
@@ -184,7 +195,10 @@ void InputTask(void *pvParameter)
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY); 
 
     // Single init, buffers now static so no per-call stack hit
+
+
     digital_inputs_init();
+    ESP_LOGW(TAG, "Digital Inputs Initialized");
 
      // 2) Latch the _real_ initial state
     prev_in1 = !gpio_get_level(IN1_GPIO);
