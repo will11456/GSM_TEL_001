@@ -197,7 +197,7 @@ void gps_init(void) {
     uart_set_pin(GPS_UART_NUM, GPS_UART_TX_PIN, GPS_UART_RX_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
     uart_driver_install(GPS_UART_NUM, GPS_UART_BUF_SIZE * 2, 0, 0, NULL, 0);
 
-    ESP_LOGW(TAG, "GPS UART initialized");
+    ESP_LOGW(TAG, "GPS UART: Complete");
 
 }
 

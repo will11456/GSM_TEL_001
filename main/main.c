@@ -71,7 +71,7 @@ void GPIOInit(void)
     gpio_set_level(OUTPUT_1, 0);
     gpio_set_level(OUTPUT_2, 0);
 
-    ESP_LOGW(TAG, "GPIO Init Done");
+    ESP_LOGW(TAG, "GPIO Init: Complete");
 
 }
 
@@ -81,7 +81,7 @@ void EnableModemRail(void)
     gpio_set_level(RAIL_4V_EN, 0);
     vTaskDelay(500 / portTICK_PERIOD_MS); // Wait for 1 second to stabilize the rail
     gpio_set_level(RAIL_4V_EN, 1);
-    ESP_LOGW(TAG, "4V Rail Enabled");
+    ESP_LOGW(TAG, "4V Rail: Enabled");
 }
 
 
@@ -96,15 +96,6 @@ void app_main(void)
     //Initialize GPIO
     GPIOInit();
 
-    //Initialize Output Controller
-    output_controller_init();
-
-    //initialize I2C
-    i2c_master_init();
-
-    //Enable 4V rail for modem
-    EnableModemRail();
-
     //init modem and UART1
     modem_init();
 
@@ -114,6 +105,15 @@ void app_main(void)
     //retrieve config
     restore_input_configs_from_flash();
 
+    //Initialize Output Controller
+    output_controller_init();
+
+    //initialize I2C
+    i2c_master_init();
+
+    //Enable 4V rail for modem
+    EnableModemRail();
+    
     //init GPS and UART2
     gps_init();
 
@@ -124,21 +124,12 @@ void app_main(void)
     xTaskCreate(ModemTask, "modem_task", 2048*8, NULL, 1, NULL);
     xTaskCreate(ADCTask, "read_ads1115_task", 2048*8, NULL, 3, &adcTaskHandle);
     xTaskCreate(InputTask, "InputTask", 2048*2, NULL, 2, &inputTaskHandle);
-    
     xTaskCreate(SmsHandlerTask, "SmsHandlerTask", 4096, NULL, 3, NULL);
     xTaskCreate(tmp102_task, "tmp102_task", 2048, NULL, 10, NULL);
     xTaskCreate(gps_task, "gps_task", 4096, NULL, 7, NULL);
 
 
+    vTaskDelay(100 / portTICK_PERIOD_MS);
 
-
-    vTaskDelay(10000 / portTICK_PERIOD_MS);
-
-    // while(1){
-        
-    //     report_gps_status();
-        
-    //     vTaskDelay(1000 / portTICK_PERIOD_MS); // Delay for 1 second before checking again
-    // }
-
+   
 }

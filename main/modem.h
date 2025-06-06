@@ -4,6 +4,9 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+
+
+
 /**
  * @brief Initialize UART and modem command queue
  */

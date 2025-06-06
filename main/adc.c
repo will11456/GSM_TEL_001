@@ -52,6 +52,8 @@ esp_err_t i2c_master_init(void) {
     esp_err_t err = i2c_param_config(I2C_MASTER_NUM, &conf);
     if (err != ESP_OK) return err;
 
+    ESP_LOGW(TAG, "I2C init: Complete");
+
     return i2c_driver_install(I2C_MASTER_NUM, conf.mode,
                               I2C_MASTER_RX_BUF_DISABLE,
                               I2C_MASTER_TX_BUF_DISABLE, 0);

@@ -56,6 +56,8 @@ void restore_input_configs_from_flash(void){
         config_store_save_valarm_config(&valarm_config);
     }
 
+    ESP_LOGW(TAG, "Input configs: Complete");
+
 }
 
 //Input naming helper function

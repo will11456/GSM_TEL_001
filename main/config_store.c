@@ -39,7 +39,7 @@
 #define KEY_NAME_ALG  "name_alg"
 #define KEY_NAME_RES  "name_res"
 
-
+static const char *TAG = "CONFIG";
 
 
 // === String Save/Load Helpers ===
@@ -93,6 +93,7 @@ void config_store_init(void) {
     }
     ESP_ERROR_CHECK(err);
     vTaskDelay(1000 / portTICK_PERIOD_MS);
+    ESP_LOGW(TAG, "Flash NVS: Complete");
 }
 
 esp_err_t config_store_reset_defaults(void) {

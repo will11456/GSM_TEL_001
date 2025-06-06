@@ -150,27 +150,38 @@ void check_digital_inputs(void)
 
     // IN1: edge detection
     if (cur1 != prev_in1) {
-        if (config_store_list_log("IN1", numbers_buf, sizeof(numbers_buf)) == ESP_OK && *numbers_buf) {
-            for (char *tok = strtok(numbers_buf, ","); tok; tok = strtok(NULL, ",")) {
-                char input_disp[48];
-                get_input_display("IN1", input_disp, sizeof(input_disp));
-                snprintf(msg_buf, sizeof(msg_buf), "%s %s", input_disp, cur1 ? "Activated" : "Deactivated");
-                ESP_LOGI(TAG, "%s %s", input_disp, cur1 ? "Activated" : "Deactivated");
 
-                modem_send_sms(tok, msg_buf);
-            }
-        }
         // drive output on edge
         if (in1_out_cfg == OUT1) {
             output_controller_send(&(output_cmd_t){ .id=OUTPUT_ID_1, .level=cur1 });
         } else if (in1_out_cfg == OUT2) {
             output_controller_send(&(output_cmd_t){ .id=OUTPUT_ID_2, .level=cur1 });
         }
+
+
+        if (config_store_list_log("IN1", numbers_buf, sizeof(numbers_buf)) == ESP_OK && *numbers_buf) {
+            for (char *tok = strtok(numbers_buf, ","); tok; tok = strtok(NULL, ",")) {
+                char input_disp[48];
+                get_input_display("IN1", input_disp, sizeof(input_disp));
+                snprintf(msg_buf, sizeof(msg_buf), "%s %s", input_disp, cur1 ? "Activated" : "Deactivated");
+                ESP_LOGI(TAG, "%s %s", input_disp, cur1 ? "Activated" : "Deactivated");
+                modem_send_sms(tok, msg_buf);
+            }
+        }
+        
         prev_in1 = cur1;
     }
 
     // IN2: edge detection
     if (cur2 != prev_in2) {
+
+        if (in2_out_cfg == OUT1) {
+            output_controller_send(&(output_cmd_t){ .id=OUTPUT_ID_1, .level=cur2 });
+        } else if (in2_out_cfg == OUT2) {
+            output_controller_send(&(output_cmd_t){ .id=OUTPUT_ID_2, .level=cur2 });
+        }
+
+        
         if (config_store_list_log("IN2", numbers_buf, sizeof(numbers_buf)) == ESP_OK && *numbers_buf) {
             for (char *tok = strtok(numbers_buf, ","); tok; tok = strtok(NULL, ",")) {
                 char input_disp[48];
@@ -180,11 +191,7 @@ void check_digital_inputs(void)
                 modem_send_sms(tok, msg_buf);
             }
         }
-        if (in2_out_cfg == OUT1) {
-            output_controller_send(&(output_cmd_t){ .id=OUTPUT_ID_1, .level=cur2 });
-        } else if (in2_out_cfg == OUT2) {
-            output_controller_send(&(output_cmd_t){ .id=OUTPUT_ID_2, .level=cur2 });
-        }
+        
         prev_in2 = cur2;
     }
 }
@@ -195,14 +202,12 @@ void InputTask(void *pvParameter)
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
     ESP_LOGW(TAG, "Input Task Started"); 
 
-    // Single init, buffers now static so no per-call stack hit
-
-    vTaskDelay(pdMS_TO_TICKS(5000)); 
+    vTaskDelay(pdMS_TO_TICKS(10000)); // Allow other tasks to initialize
 
     digital_inputs_init();
-    ESP_LOGW(TAG, "Digital Inputs Initialized");
+    ESP_LOGW(TAG, "Digital Inputs: Complete");
 
-     // 2) Latch the _real_ initial state
+    //Latch the _real_ initial state
     prev_in1 = !gpio_get_level(IN1_GPIO);
     prev_in2 = !gpio_get_level(IN2_GPIO);
 

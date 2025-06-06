@@ -27,6 +27,7 @@ static const char *TAG = "MODEM";
 extern TaskHandle_t adcTaskHandle;
 extern TaskHandle_t inputTaskHandle;
 
+
 typedef enum {
     MODEM_CMD_AT,
     MODEM_CMD_SMS
@@ -54,6 +55,7 @@ typedef struct {
 
 QueueHandle_t modem_cmd_queue = NULL;
 QueueHandle_t rx_message_queue = NULL;
+
 static int last_sms_index = -1;
 
 extern void message_parser(const char *sender, const char *message);  // Defined in handler.c
@@ -162,12 +164,115 @@ bool signal_quality(int *rssi_out, char *rating_buf, size_t buf_len)
     return true;
 }
 
+
+
+bool modem_send_at_cmd(const char *cmd, char *response_buf, size_t buf_len) {
+    modem_command_t *req = malloc(sizeof(modem_command_t));
+    if (!req) return false;
+
+    req->type = MODEM_CMD_AT;
+    req->at.response_len = buf_len;
+    req->at.success = false;
+    strncpy(req->at.command, cmd, sizeof(req->at.command) - 1);
+    req->at.done = xSemaphoreCreateBinary();
+    if (!req->at.done) {
+        free(req);
+        return false;
+    }
+
+    if (!xQueueSend(modem_cmd_queue, &req, pdMS_TO_TICKS(100))) {
+        vSemaphoreDelete(req->at.done);
+        free(req);
+        return false;
+    }
+
+    if (!xSemaphoreTake(req->at.done, pdMS_TO_TICKS(3000))) {
+        vSemaphoreDelete(req->at.done);
+        free(req);
+        return false;
+    }
+
+    strncpy(response_buf, req->at.response, buf_len - 1);
+    response_buf[buf_len - 1] = '\0';
+
+    vSemaphoreDelete(req->at.done);
+    free(req);
+
+    return req->at.success;
+}
+
+
+bool modem_send_sms(const char *number, const char *message) {
+    // 1) Fetch Unit ID from NVS
+    char unit_id[32];
+    if (config_store_get_unit_id(unit_id, sizeof(unit_id)) != ESP_OK) {
+        // fallback
+        strncpy(unit_id, "Unit ID", sizeof(unit_id)-1);
+        unit_id[sizeof(unit_id)-1] = '\0';
+    }
+
+    // 2) Build the full text with ID header
+    //    assume req->sms.message is e.g. 160 or 512 bytes long
+    char full_msg[sizeof(((modem_command_t*)0)->sms.message)];
+    snprintf(full_msg, sizeof(full_msg), "%s: %s", unit_id, message);
+
+    // 3) Allocate the modem command
+    modem_command_t *req = malloc(sizeof(modem_command_t));
+
+
+    if (req == NULL) {
+    ESP_LOGE("QUEUE", "Attempted to queue a NULL pointer!");
+    }
+
+    if (!req) return false;
+
+    req->type = MODEM_CMD_SMS;
+    req->sms.success = false;
+
+    // 4) Copy number and our full_msg
+    strncpy(req->sms.number, number, sizeof(req->sms.number) - 1);
+    req->sms.number[sizeof(req->sms.number) - 1] = '\0';
+
+    strncpy(req->sms.message, full_msg, sizeof(req->sms.message) - 1);
+    req->sms.message[sizeof(req->sms.message) - 1] = '\0';
+
+    // 5) Queue it and wait for done
+    req->sms.done = xSemaphoreCreateBinary();
+    if (!req->sms.done) {
+        free(req);
+        return false;
+    }
+
+    //check
+    if (!modem_cmd_queue) {
+        ESP_LOGE("MODEM", "SMS queue not initialized, can't send!");
+        
+    }
+
+   
+    if (!xQueueSend(modem_cmd_queue, &req, pdMS_TO_TICKS(100))) {
+        vSemaphoreDelete(req->sms.done);
+        free(req);
+        return false;
+    }
+
+    if (!xSemaphoreTake(req->sms.done, pdMS_TO_TICKS(12000))) {
+        vSemaphoreDelete(req->sms.done);
+        free(req);
+        return false;
+    }
+
+    bool success = req->sms.success;
+    vSemaphoreDelete(req->sms.done);
+    free(req);
+    return success;
+}
+
+
 ////////////////////////////////////////////////////
 
 
 void ModemTask(void *param) {
-
-    
 
     modem_command_t *req = NULL;
     uint8_t buf[512];
@@ -187,9 +292,9 @@ void ModemTask(void *param) {
     vTaskDelay(pdMS_TO_TICKS(300));
     uart_flush_input(UART_PORT);
 
-    vTaskDelay(pdMS_TO_TICKS(1000)); // Wait for the modem to stabilize
+    vTaskDelay(pdMS_TO_TICKS(2000)); // Wait for the modem to stabilize
 
-    ESP_LOGW("MODEM", "Modem initialized");
+    ESP_LOGW(TAG, "Modem init: Complete");
     xTaskNotifyGive(adcTaskHandle);
     xTaskNotifyGive(inputTaskHandle);
 
@@ -327,102 +432,3 @@ void ModemTask(void *param) {
     }
 }
 
-bool modem_send_at_cmd(const char *cmd, char *response_buf, size_t buf_len) {
-    modem_command_t *req = malloc(sizeof(modem_command_t));
-    if (!req) return false;
-
-    req->type = MODEM_CMD_AT;
-    req->at.response_len = buf_len;
-    req->at.success = false;
-    strncpy(req->at.command, cmd, sizeof(req->at.command) - 1);
-    req->at.done = xSemaphoreCreateBinary();
-    if (!req->at.done) {
-        free(req);
-        return false;
-    }
-
-    if (!xQueueSend(modem_cmd_queue, &req, pdMS_TO_TICKS(100))) {
-        vSemaphoreDelete(req->at.done);
-        free(req);
-        return false;
-    }
-
-    if (!xSemaphoreTake(req->at.done, pdMS_TO_TICKS(3000))) {
-        vSemaphoreDelete(req->at.done);
-        free(req);
-        return false;
-    }
-
-    strncpy(response_buf, req->at.response, buf_len - 1);
-    response_buf[buf_len - 1] = '\0';
-
-    vSemaphoreDelete(req->at.done);
-    free(req);
-
-    return req->at.success;
-}
-
-
-bool modem_send_sms(const char *number, const char *message) {
-    // 1) Fetch Unit ID from NVS
-    char unit_id[32];
-    if (config_store_get_unit_id(unit_id, sizeof(unit_id)) != ESP_OK) {
-        // fallback
-        strncpy(unit_id, "Unit ID", sizeof(unit_id)-1);
-        unit_id[sizeof(unit_id)-1] = '\0';
-    }
-
-    // 2) Build the full text with ID header
-    //    assume req->sms.message is e.g. 160 or 512 bytes long
-    char full_msg[sizeof(((modem_command_t*)0)->sms.message)];
-    snprintf(full_msg, sizeof(full_msg), "%s: %s", unit_id, message);
-
-    // 3) Allocate the modem command
-    modem_command_t *req = malloc(sizeof(modem_command_t));
-
-    if (req == NULL) {
-    ESP_LOGE("QUEUE", "Attempted to queue a NULL pointer!");
-    }
-
-    if (!req) return false;
-
-    req->type = MODEM_CMD_SMS;
-    req->sms.success = false;
-
-    // 4) Copy number and our full_msg
-    strncpy(req->sms.number, number, sizeof(req->sms.number) - 1);
-    req->sms.number[sizeof(req->sms.number) - 1] = '\0';
-
-    strncpy(req->sms.message, full_msg, sizeof(req->sms.message) - 1);
-    req->sms.message[sizeof(req->sms.message) - 1] = '\0';
-
-    // 5) Queue it and wait for done
-    req->sms.done = xSemaphoreCreateBinary();
-    if (!req->sms.done) {
-        free(req);
-        return false;
-    }
-
-    //check
-    if (!modem_cmd_queue) {
-        ESP_LOGE("MODEM", "SMS queue not initialized, can't send!");
-        
-    }
-
-    if (!xQueueSend(modem_cmd_queue, &req, pdMS_TO_TICKS(100))) {
-        vSemaphoreDelete(req->sms.done);
-        free(req);
-        return false;
-    }
-
-    if (!xSemaphoreTake(req->sms.done, pdMS_TO_TICKS(12000))) {
-        vSemaphoreDelete(req->sms.done);
-        free(req);
-        return false;
-    }
-
-    bool success = req->sms.success;
-    vSemaphoreDelete(req->sms.done);
-    free(req);
-    return success;
-}
