@@ -53,7 +53,6 @@ void OutputTask(void *pvParameters)
 
 void output_controller_send(const output_cmd_t *cmd) {
     if (output_queue) {
-        ESP_LOGE(TAG, "output sent");
         xQueueSend(output_queue, cmd, portMAX_DELAY);
     } else {
         ESP_LOGE(TAG, "output_controller_send(): queue not initialized!");

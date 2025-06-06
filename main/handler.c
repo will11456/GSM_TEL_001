@@ -187,7 +187,7 @@ void check_input_conditions(float cur, float alg, float res, float battery_volts
         ESP_LOGW(TAG, "VALARM triggered: %.2f V", battery_volts);
         if (config_store_list_log("VALARM", numbers, sizeof(numbers)) == ESP_OK && *numbers) {
             for (char *token = strtok(numbers, ","); token; token = strtok(NULL, ",")) {
-                snprintf(reply, sizeof(reply), "Voltage Alarm Triggered: %.2f V", battery_volts);
+                snprintf(reply, sizeof(reply), "Voltage Alarm Triggered: %.2f V < %.2fV", battery_volts, valarm_config.value1);
                 modem_send_sms(token, reply);
             }
         }
@@ -200,6 +200,12 @@ void check_input_conditions(float cur, float alg, float res, float battery_volts
     }
     else if (!trigger_val && already_triggered_valarm) {
         ESP_LOGI(TAG, "VALARM cleared: %.2f V", battery_volts);
+        if (config_store_list_log("VALARM", numbers, sizeof(numbers)) == ESP_OK && *numbers) {
+            for (char *token = strtok(numbers, ","); token; token = strtok(NULL, ",")) {
+                snprintf(reply, sizeof(reply), "Voltage Alarm Cleared: %.2f V > %.2fV", battery_volts, valarm_config.value1);
+                modem_send_sms(token, reply);
+            }
+        }
         if (valarm_config.output == OUT1) {
             output_controller_send(&(output_cmd_t){ .id = OUTPUT_ID_1, .level = 0 });
         } else if (valarm_config.output == OUT2) {
