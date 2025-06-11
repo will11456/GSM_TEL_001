@@ -26,6 +26,7 @@ static const char *TAG = "MODEM";
 
 extern TaskHandle_t adcTaskHandle;
 extern TaskHandle_t inputTaskHandle;
+extern TaskHandle_t handlerTaskHandle;
 
 
 typedef enum {
@@ -297,6 +298,8 @@ void ModemTask(void *param) {
     ESP_LOGW(TAG, "Modem init: Complete");
     xTaskNotifyGive(adcTaskHandle);
     xTaskNotifyGive(inputTaskHandle);
+    xTaskNotifyGive(handlerTaskHandle);
+
 
         
     while (1) {

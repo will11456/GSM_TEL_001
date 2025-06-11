@@ -562,8 +562,10 @@ if (sscanf(cmd, "NAME %31s %31[^\n]", arg1, arg2) == 2) {
     send_reply(sms->sender, "Unknown or invalid command");
 }
 
-void SmsHandlerTask(void *param) {
+void HandlerTask(void *param) {
     sms_message_t sms;
+    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+    ESP_LOGW(TAG, "Handler Task Started"); 
     
     while (1) {
         if (xQueueReceive(rx_message_queue, &sms, portMAX_DELAY)) {

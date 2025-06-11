@@ -223,6 +223,8 @@ float get_battery_voltage(void)
 void ADCTask(void *pvParameter) 
 {
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY); 
+    vTaskDelay(10000 / portTICK_PERIOD_MS); // Allow time for other tasks to initialize
+
 
     uint16_t an;
     uint16_t cur;

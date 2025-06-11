@@ -22,6 +22,7 @@ static const char* TAG = "MAIN";
 TaskHandle_t adcTaskHandle = NULL;
 TaskHandle_t modemTaskHandle = NULL;
 TaskHandle_t inputTaskHandle = NULL;
+TaskHandle_t handlerTaskHandle = NULL;
 
 
 
@@ -124,7 +125,7 @@ void app_main(void)
     xTaskCreate(ModemTask, "modem_task", 2048*8, NULL, 1, NULL);
     xTaskCreate(ADCTask, "read_ads1115_task", 2048*8, NULL, 3, &adcTaskHandle);
     xTaskCreate(InputTask, "InputTask", 2048*2, NULL, 2, &inputTaskHandle);
-    xTaskCreate(SmsHandlerTask, "SmsHandlerTask", 4096, NULL, 3, NULL);
+    xTaskCreate(HandlerTask, "HandlerTask", 4096, NULL, 3, &handlerTaskHandle);
     xTaskCreate(tmp102_task, "tmp102_task", 2048, NULL, 10, NULL);
     xTaskCreate(gps_task, "gps_task", 4096, NULL, 7, NULL);
 

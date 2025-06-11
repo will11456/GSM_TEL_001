@@ -103,7 +103,6 @@ void digital_inputs_init(void)
 void check_digital_inputs(void)
 {
     
-
     // read current inverted levels (active low)
     bool cur1 = !gpio_get_level(IN1_GPIO);
     bool cur2 = !gpio_get_level(IN2_GPIO);
