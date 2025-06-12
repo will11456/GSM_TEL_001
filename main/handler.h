@@ -44,6 +44,8 @@ typedef struct {
     float value2; // RANGE: upper, ignored for LIMIT
     condition_t cond;
 } input_monitor_config_t;
+
+
 void HandlerTask(void *param);
 
 void check_input_conditions(float cur, float alg, float res, float battery_volts);

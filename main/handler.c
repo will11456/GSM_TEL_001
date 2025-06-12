@@ -528,34 +528,106 @@ static void parse_command(const sms_message_t *sms) {
         return;
     }
 
-if (sscanf(cmd, "WRITESERIAL%31s", arg1) == 1) {
-    config_store_set_serial(arg1);
-    snprintf(response, sizeof(response), "Serial number set to %s", arg1);
-    send_reply(sms->sender, response);
-    return;
-}
-
-if (strcasecmp(cmd, "READSERIAL") == 0) {
-    char serial[32] = {0};
-    if (config_store_get_serial(serial, sizeof(serial)) == ESP_OK && strlen(serial) > 0) {
-        snprintf(response, sizeof(response), "Serial number: %s", serial);
-    } else {
-        snprintf(response, sizeof(response), "Serial number not set");
+    if (sscanf(cmd, "WRITESERIAL%31s", arg1) == 1) {
+        config_store_set_serial(arg1);
+        snprintf(response, sizeof(response), "Serial number set to %s", arg1);
+        send_reply(sms->sender, response);
+        return;
     }
-    send_reply(sms->sender, response);
-    return;
-}
 
-if (sscanf(cmd, "NAME %31s %31[^\n]", arg1, arg2) == 2) {
-    if (config_store_set_input_name(arg1, arg2) == ESP_OK) {
-        snprintf(response, sizeof(response), "%s name set to %s", arg1, arg2);
-    } else {
-        snprintf(response, sizeof(response), "Invalid input for NAME: %s", arg1);
+    if (strcasecmp(cmd, "READSERIAL") == 0) {
+        char serial[32] = {0};
+        if (config_store_get_serial(serial, sizeof(serial)) == ESP_OK && strlen(serial) > 0) {
+            snprintf(response, sizeof(response), "Serial number: %s", serial);
+        } else {
+            snprintf(response, sizeof(response), "Serial number not set");
+        }
+        send_reply(sms->sender, response);
+        return;
     }
-    send_reply(sms->sender, response);
+
+    if (sscanf(cmd, "NAME %31s %31[^\n]", arg1, arg2) == 2) {
+        if (config_store_set_input_name(arg1, arg2) == ESP_OK) {
+            snprintf(response, sizeof(response), "%s name set to %s", arg1, arg2);
+        } else {
+            snprintf(response, sizeof(response), "Invalid input for NAME: %s", arg1);
+        }
+        send_reply(sms->sender, response);
+        return;
+    }
+
+
+
+    
+
+    if (sscanf(cmd, "STATUS %31s", arg1) == 1) {
+    // IN1/IN2 mapping
+    if (strcasecmp(arg1, "IN1") == 0 || strcasecmp(arg1, "IN2") == 0) {
+        output_action_t out = OUT_NONE;
+        if (config_store_get_input_output(arg1, &out) == ESP_OK) {
+            char input_disp[48];
+            get_input_display(arg1, input_disp, sizeof(input_disp));
+            const char *outstr = (out == OUT1) ? "OUT1" : (out == OUT2) ? "OUT2" : "None";
+            snprintf(response, sizeof(response), "%s mapped to %s", input_disp, outstr);
+        } else {
+            snprintf(response, sizeof(response), "%s mapping not found", arg1);
+        }
+        send_reply(sms->sender, response);
+        return;
+    }
+
+    // CUR, ALG, RES
+    if (strcasecmp(arg1, "CUR") == 0 || strcasecmp(arg1, "ALG") == 0 || strcasecmp(arg1, "RES") == 0) {
+        input_monitor_config_t cfg = {0};
+        esp_err_t err = ESP_FAIL;
+        if (strcasecmp(arg1, "CUR") == 0) err = config_store_load_cur_config(&cfg);
+        if (strcasecmp(arg1, "ALG") == 0) err = config_store_load_alg_config(&cfg);
+        if (strcasecmp(arg1, "RES") == 0) err = config_store_load_res_config(&cfg);
+
+        char input_disp[48];
+        get_input_display(arg1, input_disp, sizeof(input_disp));
+
+        if (err == ESP_OK) {
+            const char *outstr = (cfg.output == OUT1) ? "OUT1" : (cfg.output == OUT2) ? "OUT2" : "None";
+            if (cfg.type == THRESH_OFF) {
+                snprintf(response, sizeof(response), "%s: monitoring OFF, mapped to %s", input_disp, outstr);
+            } else if (cfg.type == THRESH_LIMIT) {
+                const char *cond = (cfg.cond == COND_OVER) ? "OVER" :
+                                   (cfg.cond == COND_UNDER) ? "UNDER" : "UNKNOWN";
+                snprintf(response, sizeof(response), "%s: LIMIT %s %.2f mapped to %s",
+                         input_disp, cond, cfg.value1, outstr);
+            } else if (cfg.type == THRESH_RANGE) {
+                const char *cond = (cfg.cond == COND_INSIDE) ? "INSIDE" :
+                                   (cfg.cond == COND_OUTSIDE) ? "OUTSIDE" : "UNKNOWN";
+                snprintf(response, sizeof(response), "%s: RANGE %.2f-%.2f %s mapped to %s",
+                         input_disp, cfg.value1, cfg.value2, cond, outstr);
+            } else {
+                snprintf(response, sizeof(response), "%s: unknown type", input_disp);
+            }
+        } else {
+            snprintf(response, sizeof(response), "%s config not found", input_disp);
+        }
+        send_reply(sms->sender, response);
+        return;
+    }
+
+    // VALARM
+    if (strcasecmp(arg1, "VALARM") == 0) {
+        valarm_config_t vcfg = {0};
+        if (config_store_load_valarm_config(&vcfg) == ESP_OK) {
+            const char *outstr = (vcfg.output == OUT1) ? "OUT1" : (vcfg.output == OUT2) ? "OUT2" : "None";
+            snprintf(response, sizeof(response), "VALARM: %.2f V mapped to %s",
+                     vcfg.value1, outstr);
+        } else {
+            snprintf(response, sizeof(response), "No voltage alarm configured");
+        }
+        send_reply(sms->sender, response);
+        return;
+    }
+
+    send_reply(sms->sender, "Invalid STATUS argument");
     return;
 }
-
 
 
     // Any unknown or invalid command
