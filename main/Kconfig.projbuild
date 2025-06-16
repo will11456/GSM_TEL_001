@@ -1,0 +1,15 @@
+menu "Firmware Configuration"
+
+config FIRMWARE_VERSION_MAJOR
+    int "Firmware Major Version"
+    default 1
+
+config FIRMWARE_VERSION_MINOR
+    int "Firmware Minor Version"
+    default 0
+
+config FIRMWARE_VERSION_PATCH
+    int "Firmware Patch Version"
+    default 0
+
+endmenu

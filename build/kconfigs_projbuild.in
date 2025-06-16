@@ -3,3 +3,4 @@ source "C:/Users/WillHandley/esp/v5.2.2/esp-idf/components/esp_app_format/Kconfi
 source "C:/Users/WillHandley/esp/v5.2.2/esp-idf/components/esp_rom/Kconfig.projbuild"
 source "C:/Users/WillHandley/esp/v5.2.2/esp-idf/components/esptool_py/Kconfig.projbuild"
 source "C:/Users/WillHandley/esp/v5.2.2/esp-idf/components/partition_table/Kconfig.projbuild"
+source "C:/Users/WillHandley/Documents/Firmware_development/GSM_Telemetry/GSM_TEL_001/main/Kconfig.projbuild"

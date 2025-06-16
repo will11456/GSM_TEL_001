@@ -11,7 +11,7 @@ C:/Users/WillHandley/Documents/Firmware_development/GSM_Telemetry/GSM_TEL_001/bu
 C:/Users/WillHandley/Documents/Firmware_development/GSM_Telemetry/GSM_TEL_001/build/CMakeFiles/flash.dir
 C:/Users/WillHandley/Documents/Firmware_development/GSM_Telemetry/GSM_TEL_001/build/CMakeFiles/encrypted-flash.dir
 C:/Users/WillHandley/Documents/Firmware_development/GSM_Telemetry/GSM_TEL_001/build/CMakeFiles/_project_elf_src.dir
-C:/Users/WillHandley/Documents/Firmware_development/GSM_Telemetry/GSM_TEL_001/build/CMakeFiles/GSM_TEL_001.elf.dir
+C:/Users/WillHandley/Documents/Firmware_development/GSM_Telemetry/GSM_TEL_001/build/CMakeFiles/my_project.elf.dir
 C:/Users/WillHandley/Documents/Firmware_development/GSM_Telemetry/GSM_TEL_001/build/CMakeFiles/size.dir
 C:/Users/WillHandley/Documents/Firmware_development/GSM_Telemetry/GSM_TEL_001/build/CMakeFiles/size-files.dir
 C:/Users/WillHandley/Documents/Firmware_development/GSM_Telemetry/GSM_TEL_001/build/CMakeFiles/size-components.dir

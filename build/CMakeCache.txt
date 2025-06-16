@@ -14,6 +14,12 @@
 # EXTERNAL cache entries
 ########################
 
+//No help, variable specified on the command line.
+CCACHE_ENABLE:UNINITIALIZED=1
+
+//Path to a program.
+CCACHE_FOUND:FILEPATH=C:/Users/WillHandley/.espressif/tools/ccache/4.8/ccache-4.8-windows-x86_64/ccache.exe
+
 //Path to a program.
 CMAKE_ADDR2LINE:FILEPATH=C:/Users/WillHandley/.espressif/tools/xtensa-esp-elf/esp-13.2.0_20230928/xtensa-esp-elf/bin/xtensa-esp32s3-elf-addr2line.exe
 
@@ -154,7 +160,7 @@ CMAKE_INSTALL_MANDIR:PATH=
 CMAKE_INSTALL_OLDINCLUDEDIR:PATH=/usr/include
 
 //Install path prefix, prepended onto install directories.
-CMAKE_INSTALL_PREFIX:PATH=C:/Program Files (x86)/GSM_TEL_001
+CMAKE_INSTALL_PREFIX:PATH=C:/Program Files (x86)/my_project
 
 //Run-time variable data (LOCALSTATEDIR/run)
 CMAKE_INSTALL_RUNSTATEDIR:PATH=
@@ -353,10 +359,10 @@ Mbed TLS_IS_TOP_LEVEL:STATIC=OFF
 Mbed TLS_SOURCE_DIR:STATIC=C:/Users/WillHandley/esp/v5.2.2/esp-idf/components/mbedtls/mbedtls
 
 //No help, variable specified on the command line.
-PYTHON_DEPS_CHECKED:UNINITIALIZED=1
+PYTHON:UNINITIALIZED=C:\Users\WillHandley\.espressif\python_env\idf5.2_py3.11_env\Scripts\python.exe
 
 //No help, variable specified on the command line.
-SDKCONFIG:UNINITIALIZED=c:\Users\WillHandley\Documents\Firmware_development\GSM_Telemetry\GSM_TEL_001\sdkconfig
+PYTHON_DEPS_CHECKED:UNINITIALIZED=1
 
 //Allow unsafe builds. These builds ARE NOT SECURE.
 UNSAFE_BUILD:BOOL=OFF
@@ -387,6 +393,15 @@ mbedtls_LIB_DEPENDS:STATIC=general;__idf_cxx;general;__idf_newlib;general;__idf_
 
 //Dependencies for the target
 mbedx509_LIB_DEPENDS:STATIC=general;__idf_cxx;general;__idf_newlib;general;__idf_freertos;general;__idf_esp_hw_support;general;__idf_heap;general;__idf_log;general;__idf_soc;general;__idf_hal;general;__idf_esp_rom;general;__idf_esp_common;general;__idf_esp_system;general;__idf_xtensa;general;mbedcrypto;
+
+//Value Computed by CMake
+my_project_BINARY_DIR:STATIC=C:/Users/WillHandley/Documents/Firmware_development/GSM_Telemetry/GSM_TEL_001/build
+
+//Value Computed by CMake
+my_project_IS_TOP_LEVEL:STATIC=ON
+
+//Value Computed by CMake
+my_project_SOURCE_DIR:STATIC=C:/Users/WillHandley/Documents/Firmware_development/GSM_Telemetry/GSM_TEL_001
 
 //Dependencies for the target
 p256m_LIB_DEPENDS:STATIC=general;__idf_cxx;general;__idf_newlib;general;__idf_freertos;general;__idf_esp_hw_support;general;__idf_heap;general;__idf_log;general;__idf_soc;general;__idf_hal;general;__idf_esp_rom;general;__idf_esp_common;general;__idf_esp_system;general;__idf_xtensa;
@@ -601,7 +616,7 @@ HAVE_TIME_T_SIZE:INTERNAL=TRUE
 //CHECK_TYPE_SIZE: sizeof(time_t)
 TIME_T_SIZE:INTERNAL=8
 //CMAKE_INSTALL_PREFIX during last run
-_GNUInstallDirs_LAST_CMAKE_INSTALL_PREFIX:INTERNAL=C:/Program Files (x86)/GSM_TEL_001
+_GNUInstallDirs_LAST_CMAKE_INSTALL_PREFIX:INTERNAL=C:/Program Files (x86)/my_project
 _Python3_EXECUTABLE:INTERNAL=C:/Users/WillHandley/.espressif/python_env/idf5.2_py3.11_env/Scripts/python.exe
 //Python3 Properties
 _Python3_INTERPRETER_PROPERTIES:INTERNAL=Python;3;11;2;32;;;C:\Users\WillHandley\.espressif\tools\idf-python\3.11.2\Lib;C:\Users\WillHandley\.espressif\tools\idf-python\3.11.2\Lib;C:\Users\WillHandley\.espressif\python_env\idf5.2_py3.11_env\Lib\site-packages;C:\Users\WillHandley\.espressif\python_env\idf5.2_py3.11_env\Lib\site-packages

@@ -6001,6 +6001,44 @@
     {
         "children": [
             {
+                "children": [],
+                "depends_on": null,
+                "help": null,
+                "id": "FIRMWARE_VERSION_MAJOR",
+                "name": "FIRMWARE_VERSION_MAJOR",
+                "range": null,
+                "title": "Firmware Major Version",
+                "type": "int"
+            },
+            {
+                "children": [],
+                "depends_on": null,
+                "help": null,
+                "id": "FIRMWARE_VERSION_MINOR",
+                "name": "FIRMWARE_VERSION_MINOR",
+                "range": null,
+                "title": "Firmware Minor Version",
+                "type": "int"
+            },
+            {
+                "children": [],
+                "depends_on": null,
+                "help": null,
+                "id": "FIRMWARE_VERSION_PATCH",
+                "name": "FIRMWARE_VERSION_PATCH",
+                "range": null,
+                "title": "Firmware Patch Version",
+                "type": "int"
+            }
+        ],
+        "depends_on": null,
+        "id": "firmware-configuration",
+        "title": "Firmware Configuration",
+        "type": "menu"
+    },
+    {
+        "children": [
+            {
                 "children": [
                     {
                         "children": [],

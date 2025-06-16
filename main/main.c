@@ -15,6 +15,8 @@
 #include "config_store.h"
 #include "nvs_flash.h"
 #include "config_store.h"
+#include "version.h"
+
 
 
 static const char* TAG = "MAIN";
@@ -89,6 +91,8 @@ void EnableModemRail(void)
 
 void app_main(void)
 {
+    //log firmware version
+    ESP_LOGW("VERSION", "Firmware Version: %s", FW_VERSION_FULL);
 
 
     //create mutexs
