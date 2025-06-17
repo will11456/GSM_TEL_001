@@ -27,6 +27,12 @@ static bool already_triggered_alg = false;
 static bool already_triggered_res = false;
 static bool already_triggered_valarm = false;
 
+#ifndef FW_VERSION_FULL
+#define FW_VERSION_FULL "v0.0.0"  // fallback if not set
+#endif
+
+
+
 void restore_input_configs_from_flash(void){
     if (config_store_load_cur_config(&cur_config) != ESP_OK) {
         // First boot or corrupt, set defaults
@@ -556,7 +562,11 @@ static void parse_command(const sms_message_t *sms) {
         return;
     }
 
-
+    if (strcasecmp(cmd, "VERSION") == 0) {
+    snprintf(response, sizeof(response), "Firmware Version: %s", FW_VERSION_FULL);
+    send_reply(sms->sender, response);
+    return;
+}
 
     
 
