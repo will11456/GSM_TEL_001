@@ -12,6 +12,7 @@
 #include "output.h"
 #include "config_store.h"
 #include "gps.h"
+#include "version.h"
 
 static const char* TAG = "HANDLER";
 
@@ -27,9 +28,6 @@ static bool already_triggered_alg = false;
 static bool already_triggered_res = false;
 static bool already_triggered_valarm = false;
 
-#ifndef FW_VERSION_FULL
-#define FW_VERSION_FULL "v0.0.0"  // fallback if not set
-#endif
 
 
 
