@@ -585,39 +585,65 @@ static void parse_command(const sms_message_t *sms) {
     }
 
     // CUR, ALG, RES
-    if (strcasecmp(arg1, "CUR") == 0 || strcasecmp(arg1, "ALG") == 0 || strcasecmp(arg1, "RES") == 0) {
-        input_monitor_config_t cfg = {0};
-        esp_err_t err = ESP_FAIL;
-        if (strcasecmp(arg1, "CUR") == 0) err = config_store_load_cur_config(&cfg);
-        if (strcasecmp(arg1, "ALG") == 0) err = config_store_load_alg_config(&cfg);
-        if (strcasecmp(arg1, "RES") == 0) err = config_store_load_res_config(&cfg);
+if (strcasecmp(arg1, "CUR") == 0 || strcasecmp(arg1, "ALG") == 0 || strcasecmp(arg1, "RES") == 0) {
+    input_monitor_config_t cfg = {0};
+    esp_err_t err = ESP_FAIL;
 
-        char input_disp[48];
-        get_input_display(arg1, input_disp, sizeof(input_disp));
+    if (strcasecmp(arg1, "CUR") == 0) err = config_store_load_cur_config(&cfg);
+    if (strcasecmp(arg1, "ALG") == 0) err = config_store_load_alg_config(&cfg);
+    if (strcasecmp(arg1, "RES") == 0) err = config_store_load_res_config(&cfg);
 
-        if (err == ESP_OK) {
-            const char *outstr = (cfg.output == OUT1) ? "OUT1" : (cfg.output == OUT2) ? "OUT2" : "None";
-            if (cfg.type == THRESH_OFF) {
-                snprintf(response, sizeof(response), "%s: monitoring OFF, mapped to %s", input_disp, outstr);
-            } else if (cfg.type == THRESH_LIMIT) {
-                const char *cond = (cfg.cond == COND_OVER) ? "OVER" :
-                                   (cfg.cond == COND_UNDER) ? "UNDER" : "UNKNOWN";
-                snprintf(response, sizeof(response), "%s: LIMIT %s %.2f mapped to %s",
-                         input_disp, cond, cfg.value1, outstr);
-            } else if (cfg.type == THRESH_RANGE) {
-                const char *cond = (cfg.cond == COND_INSIDE) ? "INSIDE" :
-                                   (cfg.cond == COND_OUTSIDE) ? "OUTSIDE" : "UNKNOWN";
-                snprintf(response, sizeof(response), "%s: RANGE %.2f-%.2f %s mapped to %s",
-                         input_disp, cfg.value1, cfg.value2, cond, outstr);
-            } else {
-                snprintf(response, sizeof(response), "%s: unknown type", input_disp);
-            }
-        } else {
-            snprintf(response, sizeof(response), "%s config not found", input_disp);
-        }
-        send_reply(sms->sender, response);
-        return;
+    uint16_t raw_value = 0;
+    const char *unit = "";
+    char value_str[16] = "";
+
+    if (strcasecmp(arg1, "CUR") == 0) {
+        raw_value = read_4_20_inputs(); // e.g. 5230 == 523.0 mA
+        snprintf(value_str, sizeof(value_str), "%u.%u mA", raw_value / 100, raw_value % 100);
+        unit = "mA";
+    } else if (strcasecmp(arg1, "ALG") == 0) {
+        raw_value = read_analog_inputs(); // e.g. 2450 == 2.450 V
+        snprintf(value_str, sizeof(value_str), "%u.%03u V", raw_value / 1000, raw_value % 1000);
+        unit = "V";
+    } else if (strcasecmp(arg1, "RES") == 0) {
+        raw_value = read_res_inputs(); // e.g. direct ohm value
+        snprintf(value_str, sizeof(value_str), "%u Ohm", raw_value);
+        unit = "Ohm";
     }
+
+    char input_disp[48];
+    get_input_display(arg1, input_disp, sizeof(input_disp));
+
+    const char *outstr = (cfg.output == OUT1) ? "OUT1" : (cfg.output == OUT2) ? "OUT2" : "None";
+
+    if (err == ESP_OK) {
+        if (cfg.type == THRESH_OFF) {
+            snprintf(response, sizeof(response), "%s: monitoring OFF, mapped to %s | Value: %s",
+                     input_disp, outstr, value_str);
+        } else if (cfg.type == THRESH_LIMIT) {
+            const char *cond = (cfg.cond == COND_OVER) ? "OVER" :
+                               (cfg.cond == COND_UNDER) ? "UNDER" : "UNKNOWN";
+            snprintf(response, sizeof(response),
+                     "%s: LIMIT %s %.2f mapped to %s | Value: %s",
+                     input_disp, cond, cfg.value1, outstr, value_str);
+        } else if (cfg.type == THRESH_RANGE) {
+            const char *cond = (cfg.cond == COND_INSIDE) ? "INSIDE" :
+                               (cfg.cond == COND_OUTSIDE) ? "OUTSIDE" : "UNKNOWN";
+            snprintf(response, sizeof(response),
+                     "%s: RANGE %.2f-%.2f %s mapped to %s | Value: %s",
+                     input_disp, cfg.value1, cfg.value2, cond, outstr, value_str);
+        } else {
+            snprintf(response, sizeof(response), "%s: unknown type | Value: %s",
+                     input_disp, value_str);
+        }
+    } else {
+        snprintf(response, sizeof(response), "%s config not found", input_disp);
+    }
+
+    send_reply(sms->sender, response);
+    return;
+}
+
 
     // VALARM
     if (strcasecmp(arg1, "VALARM") == 0) {

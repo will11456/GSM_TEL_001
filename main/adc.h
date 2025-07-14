@@ -30,7 +30,13 @@ void ads1115_init(uint8_t address);
 int16_t ads1115_read_single_ended(uint8_t address, uint8_t channel);
 int16_t read_ads1115_channel(uint8_t address, uint8_t channel);
 uint16_t convert_counts_to_volts(uint16_t counts);
+
+
 uint16_t read_analog_inputs(void);
+uint16_t read_res_inputs(void);
+uint16_t read_4_20_inputs(void);
+uint16_t read_analog_inputs(void);
+
 float get_battery_voltage(void);
 void ADCTask(void *pvParameter);
 

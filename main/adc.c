@@ -16,6 +16,9 @@
 #include "config_store.h"
 
 float battery_volts;
+uint16_t an;
+uint16_t cur;
+uint16_t res;
 
 //I2C Interface Setup
 #define I2C_MASTER_NUM I2C_NUM_0 // I2C port number for master dev
@@ -226,10 +229,6 @@ void ADCTask(void *pvParameter)
     vTaskDelay(10000 / portTICK_PERIOD_MS); // Allow time for other tasks to initialize
 
 
-    uint16_t an;
-    uint16_t cur;
-    uint16_t res;
-    
 
     while (1) {
 
