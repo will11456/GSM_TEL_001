@@ -440,6 +440,14 @@ static void parse_command(const sms_message_t *sms) {
         return;
     }
 
+     if (strcasecmp(cmd, "REBOOT") == 0) {
+        
+        send_reply(sms->sender, "System will reboot now...");
+        vTaskDelay(pdMS_TO_TICKS(3000)); // wait a bit before rebooting
+        esp_restart(); // Reboot the system
+        return;
+    }
+
     if (strcasecmp(cmd, "TEMP") == 0) {
         float temp_c;
         if (tmp102_read_celsius(&temp_c) == ESP_OK) {
