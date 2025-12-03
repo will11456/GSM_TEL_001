@@ -1,7 +1,7 @@
 {
     "version":            "1.1",
     "project_name":       "my_project",
-    "project_version":    "v1.0.2-dirty",
+    "project_version":    "v1.0.3-dirty",
     "project_path":       "C:/Users/WillHandley/Documents/Firmware_development/GSM_Telemetry/GSM_TEL_001",
     "idf_path":           "C:/Users/WillHandley/esp/v5.2.2/esp-idf",
     "build_dir":          "C:/Users/WillHandley/Documents/Firmware_development/GSM_Telemetry/GSM_TEL_001/build",

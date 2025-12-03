@@ -28,6 +28,10 @@
 #define KEY_IN1OUT      "in1_out"
 #define KEY_IN2OUT      "in2_out"
 
+// Polarity keys
+#define KEY_IN1POL      "in1_pol"
+#define KEY_IN2POL      "in2_pol"
+
 //Serial Number
 #define KEY_SERIAL      "serial"
 
@@ -232,6 +236,39 @@ esp_err_t config_store_get_input_output(const char *input, output_action_t *out)
     *out = (output_action_t)v;
     return err;
 }
+
+//Polarity mapping
+//Polarity mapping
+esp_err_t config_store_set_input_polarity(const char *input, bool active_high) {
+    const char *key = (strcmp(input, "IN1") == 0 ? KEY_IN1POL : KEY_IN2POL);
+    nvs_handle_t h;
+    esp_err_t err = nvs_open(NVS_NAMESPACE, NVS_READWRITE, &h);
+    if (err != ESP_OK) return err;
+    uint8_t val = active_high ? 1 : 0;
+    err = nvs_set_u8(h, key, val);
+    if (err == ESP_OK) err = nvs_commit(h);
+    nvs_close(h);
+    return err;
+}
+
+esp_err_t config_store_get_input_polarity(const char *input, bool *active_high) {
+    if (!active_high) return ESP_ERR_INVALID_ARG;
+    const char *key = (strcmp(input, "IN1") == 0 ? KEY_IN1POL : KEY_IN2POL);
+    nvs_handle_t h;
+    esp_err_t err = nvs_open(NVS_NAMESPACE, NVS_READONLY, &h);
+    if (err != ESP_OK) return err;
+    uint8_t v = 0;
+    err = nvs_get_u8(h, key, &v);
+    nvs_close(h);
+    if (err == ESP_ERR_NVS_NOT_FOUND) {
+        // default polarity: active HIGH
+        *active_high = true;
+        return ESP_OK;
+    }
+    *active_high = (v != 0);
+    return err;
+}
+
 
 
 

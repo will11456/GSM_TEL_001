@@ -243,6 +243,17 @@ condition_t parse_condition(const char *s) {
     return COND_NONE;
 }
 
+static bool parse_polarity(const char *s, bool *active_high) {
+    if (!s || !active_high) return false;
+    if (strcasecmp(s, "HIGH") == 0) {
+        *active_high = true;
+        return true;
+    } else if (strcasecmp(s, "LOW") == 0) {
+        *active_high = false;
+        return true;
+    }
+    return false;
+}
 
 void send_reply(const char *to_number, const char *message)
 {
@@ -509,34 +520,85 @@ static void parse_command(const sms_message_t *sms) {
         return;
     }
 
-    if (sscanf(cmd, "IN1 %7s", arg1) == 1) {
-        output_action_t out = parse_output(arg1);
-            if (out == OUT_NONE && strcasecmp(arg1,"NONE")!=0) {
-                send_reply(sms->sender, "Usage: IN1 OUT1|OUT2|NONE");
-            } 
-            else {
-                config_store_set_input_output("IN1", out);
-                char buf[128];
-                char input_disp[48];
-                get_input_display("IN1", input_disp, sizeof(input_disp));               
-                snprintf(buf, sizeof(buf), "%s will drive %s", input_disp, arg1);
-                send_reply(sms->sender, buf);
-            }
-            return;
-    }
-
-    if (sscanf(cmd, "IN2 %7s", arg1) == 1) {
+    if (sscanf(cmd, "IN1 %7s %31s %31s", arg1, arg2, arg3) >= 1) {
+        // arg1 = OUT1|OUT2|NONE
         output_action_t out = parse_output(arg1);
         if (out == OUT_NONE && strcasecmp(arg1,"NONE")!=0) {
-            send_reply(sms->sender, "Usage: IN2 OUT1|OUT2|NONE");
-        } else {
-            config_store_set_input_output("IN2", out);
-            char buf[128];
-            char input_disp[48];
-            get_input_display("IN2", input_disp, sizeof(input_disp));
-            snprintf(buf, sizeof(buf), "%s will drive %s", input_disp, arg1);
-            send_reply(sms->sender, buf);
+            send_reply(sms->sender, "Usage: IN1 OUT1|OUT2|NONE [POLARITY HIGH|LOW]");
+            return;
         }
+
+        // Apply mapping
+        config_store_set_input_output("IN1", out);
+
+        // Optional POLARITY argument: IN1 OUT1 POLARITY HIGH
+        if (arg2[0]) {
+            if (strcasecmp(arg2, "POLARITY") == 0 && arg3[0]) {
+                bool active_high;
+                if (parse_polarity(arg3, &active_high)) {
+                    // Persist polarity (implement in config_store if not present)
+                    config_store_set_input_polarity("IN1", active_high);
+                } else {
+                    send_reply(sms->sender, "POLARITY must be HIGH or LOW");
+                    return;
+                }
+            }
+        }
+
+        // Build reply showing mapping and polarity
+        char buf[128];
+        char input_disp[48];
+        get_input_display("IN1", input_disp, sizeof(input_disp));
+
+        // Read back polarity for message if function exists
+        bool pol_high = true;
+        if (config_store_get_input_polarity("IN1", &pol_high) == ESP_OK) {
+            snprintf(buf, sizeof(buf), "%s will drive %s, POLARITY %s", input_disp, arg1, pol_high ? "HIGH" : "LOW");
+        } else {
+            snprintf(buf, sizeof(buf), "%s will drive %s", input_disp, arg1);
+        }
+        send_reply(sms->sender, buf);
+        return;
+    }
+
+if (sscanf(cmd, "IN2 %7s %31s %31s", arg1, arg2, arg3) >= 1) {
+        // arg1 = OUT1|OUT2|NONE
+        output_action_t out = parse_output(arg1);
+        if (out == OUT_NONE && strcasecmp(arg1,"NONE")!=0) {
+            send_reply(sms->sender, "Usage: IN2 OUT1|OUT2|NONE [POLARITY HIGH|LOW]");
+            return;
+        }
+
+        // Apply mapping
+        config_store_set_input_output("IN2", out);
+
+        // Optional POLARITY argument: IN2 OUT1 POLARITY HIGH
+        if (arg2[0]) {
+            if (strcasecmp(arg2, "POLARITY") == 0 && arg3[0]) {
+                bool active_high;
+                if (parse_polarity(arg3, &active_high)) {
+                    // Persist polarity (implement in config_store if not present)
+                    config_store_set_input_polarity("IN2", active_high);
+                } else {
+                    send_reply(sms->sender, "POLARITY must be HIGH or LOW");
+                    return;
+                }
+            }
+        }
+
+        // Build reply showing mapping and polarity
+        char buf[128];
+        char input_disp[48];
+        get_input_display("IN2", input_disp, sizeof(input_disp));
+
+        // Read back polarity for message if function exists
+        bool pol_high = true;
+        if (config_store_get_input_polarity("IN2", &pol_high) == ESP_OK) {
+            snprintf(buf, sizeof(buf), "%s will drive %s, POLARITY %s", input_disp, arg1, pol_high ? "HIGH" : "LOW");
+        } else {
+            snprintf(buf, sizeof(buf), "%s will drive %s", input_disp, arg1);
+        }
+        send_reply(sms->sender, buf);
         return;
     }
 

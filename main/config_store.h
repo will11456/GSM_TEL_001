@@ -45,6 +45,11 @@ esp_err_t config_store_get_serial(char *out_serial, size_t max_len);
 esp_err_t config_store_set_input_name(const char *input, const char *name);
 esp_err_t config_store_get_input_name(const char *input, char *out, size_t len);
 
+// Polarity mapping
+esp_err_t config_store_set_input_polarity(const char *input, bool active_high);
+esp_err_t config_store_get_input_polarity(const char *input, bool *active_high);
+
+
 
 
 

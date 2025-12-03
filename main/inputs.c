@@ -17,15 +17,31 @@ static const char *TAG = "INPUTS";
 static bool prev_in1;
 static bool prev_in2;
 
+// ...existing code...
 // current and previous mapping from inputs to outputs
 static output_action_t in1_out_cfg;
 static output_action_t in2_out_cfg;
 static output_action_t prev_in1_out_cfg;
 static output_action_t prev_in2_out_cfg;
 
+// polarity settings
+static bool in1_active_high;
+static bool in2_active_high;
+
 // static buffers for SMS and logs
 static char numbers_buf[256];
 static char msg_buf[128];
+
+/**
+ * Helper to get effective input state based on polarity
+ */
+static bool get_input_state(int gpio_pin, bool active_high) {
+    bool raw = gpio_get_level(gpio_pin);
+    // raw=1 means pin is high, raw=0 means pin is low
+    // if active_high: state = raw (1=active, 0=inactive)
+    // if active_low: state = !raw (0=active, 1=inactive)
+    return active_high ? raw : !raw;
+}
 
 /**
  * Configure IN1/IN2 as inputs, latch initial states and mappings,
@@ -42,9 +58,17 @@ void digital_inputs_init(void)
     };
     gpio_config(&io_conf);
 
-    // latch initial physical state (inverted for opto-isolation)
-    prev_in1 = !gpio_get_level(IN1_GPIO);
-    prev_in2 = !gpio_get_level(IN2_GPIO);
+    // load polarity settings
+    if (config_store_get_input_polarity("IN1", &in1_active_high) != ESP_OK) {
+        in1_active_high = true;  // default to active HIGH
+    }
+    if (config_store_get_input_polarity("IN2", &in2_active_high) != ESP_OK) {
+        in2_active_high = true;  // default to active HIGH
+    }
+
+    // latch initial physical state using polarity
+    prev_in1 = get_input_state(IN1_GPIO, in1_active_high);
+    prev_in2 = get_input_state(IN2_GPIO, in2_active_high);
 
     // load initial mapping from NVS
     if (config_store_get_input_output("IN1", &in1_out_cfg) != ESP_OK) {
@@ -79,7 +103,7 @@ void digital_inputs_init(void)
 
     // do the same for IN2
     if (prev_in2) {
-                if (in2_out_cfg == OUT1) {
+        if (in2_out_cfg == OUT1) {
             output_controller_send(&(output_cmd_t){ .id = OUTPUT_ID_1, .level = 1 });
         } else if (in2_out_cfg == OUT2) {
             output_controller_send(&(output_cmd_t){ .id = OUTPUT_ID_2, .level = 1 });
@@ -102,10 +126,17 @@ void digital_inputs_init(void)
  */
 void check_digital_inputs(void)
 {
-    
-    // read current inverted levels (active low)
-    bool cur1 = !gpio_get_level(IN1_GPIO);
-    bool cur2 = !gpio_get_level(IN2_GPIO);
+    // reload polarity settings
+    if (config_store_get_input_polarity("IN1", &in1_active_high) != ESP_OK) {
+        in1_active_high = true;
+    }
+    if (config_store_get_input_polarity("IN2", &in2_active_high) != ESP_OK) {
+        in2_active_high = true;
+    }
+
+    // read current states respecting polarity
+    bool cur1 = get_input_state(IN1_GPIO, in1_active_high);
+    bool cur2 = get_input_state(IN2_GPIO, in2_active_high);
 
     // reload mapping so SMS command changes apply immediately
     if (config_store_get_input_output("IN1", &in1_out_cfg) != ESP_OK) {
@@ -149,14 +180,12 @@ void check_digital_inputs(void)
 
     // IN1: edge detection
     if (cur1 != prev_in1) {
-
         // drive output on edge
         if (in1_out_cfg == OUT1) {
             output_controller_send(&(output_cmd_t){ .id=OUTPUT_ID_1, .level=cur1 });
         } else if (in1_out_cfg == OUT2) {
             output_controller_send(&(output_cmd_t){ .id=OUTPUT_ID_2, .level=cur1 });
         }
-
 
         if (config_store_list_log("IN1", numbers_buf, sizeof(numbers_buf)) == ESP_OK && *numbers_buf) {
             for (char *tok = strtok(numbers_buf, ","); tok; tok = strtok(NULL, ",")) {
@@ -173,14 +202,12 @@ void check_digital_inputs(void)
 
     // IN2: edge detection
     if (cur2 != prev_in2) {
-
         if (in2_out_cfg == OUT1) {
             output_controller_send(&(output_cmd_t){ .id=OUTPUT_ID_1, .level=cur2 });
         } else if (in2_out_cfg == OUT2) {
             output_controller_send(&(output_cmd_t){ .id=OUTPUT_ID_2, .level=cur2 });
         }
 
-        
         if (config_store_list_log("IN2", numbers_buf, sizeof(numbers_buf)) == ESP_OK && *numbers_buf) {
             for (char *tok = strtok(numbers_buf, ","); tok; tok = strtok(NULL, ",")) {
                 char input_disp[48];
@@ -197,7 +224,6 @@ void check_digital_inputs(void)
 
 void InputTask(void *pvParameter)
 {
-
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
     ESP_LOGW(TAG, "Input Task Started"); 
 
@@ -206,9 +232,9 @@ void InputTask(void *pvParameter)
     digital_inputs_init();
     ESP_LOGW(TAG, "Digital Inputs: Complete");
 
-    //Latch the _real_ initial state
-    prev_in1 = !gpio_get_level(IN1_GPIO);
-    prev_in2 = !gpio_get_level(IN2_GPIO);
+    // Latch the real initial state respecting polarity
+    prev_in1 = get_input_state(IN1_GPIO, in1_active_high);
+    prev_in2 = get_input_state(IN2_GPIO, in2_active_high);
 
     while (1) {
         check_digital_inputs();
